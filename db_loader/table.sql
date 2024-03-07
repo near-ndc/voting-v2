@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     transaction_hash VARCHAR(44),
     index_in_chunk INTEGER,
     signer_account_id VARCHAR(64),
-    signer_public_key VARCHAR(64),
+    signer_public_key VARCHAR(128),
     nonce bigint,
     receiver_account_id VARCHAR(64),
     signature VARCHAR(128),
