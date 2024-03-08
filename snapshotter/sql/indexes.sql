@@ -1,6 +1,8 @@
 /*
  It's better to create them after data loading
  */
+CREATE INDEX idx_receipt_actions_action_kind ON receipt_actions (action_kind);
+
 CREATE INDEX idx_receipt_actions_receipt_id ON receipt_actions (receipt_id);
 
 CREATE INDEX idx_receipt_origin_transaction_originated_from_transaction_hash ON receipt_origin_transaction (originated_from_transaction_hash);
