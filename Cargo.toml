@@ -1,0 +1,12 @@
+[workspace]
+members = ["adder"]
+resolver = "2"
+
+[workspace.package]
+authors = ["Near NDC"]
+edition = "2021"
+version = "0.1.0"
+repository = "https://github.com/near-ndc/voting-v2"
+license = "Mozilla Public License 2.0"
+
+[workspace.dependencies]
