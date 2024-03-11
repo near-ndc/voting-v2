@@ -12,7 +12,7 @@ CREATE TABLE ActiveMonthsPerSigner AS WITH DistinctStakedSigners AS (
 SELECT
     ds.signer_account_id,
     COUNT(
-        DISTINCT FORMAT_DATE('%Y%m', t.block_timestamp_utc)
+        DISTINCT FORMAT_DATE('%Y%m', t.block_date)
     ) as active_months
 FROM
     DistinctStakedSigners ds
