@@ -1,4 +1,4 @@
-CREATE TABLE Active_Months_Per_Signer AS WITH DistinctStakedSigners AS (
+CREATE TABLE DistinctStakedSigners AS 
     SELECT
         DISTINCT t.signer_account_id
     FROM
@@ -13,9 +13,9 @@ CREATE TABLE Active_Months_Per_Signer AS WITH DistinctStakedSigners AS (
         and t.status = 'SUCCESS_RECEIPT_ID'
         and ra.args similar to '%"method_name": "(deposit_and_stake|stake)"%'
     GROUP BY
-        t.signer_account_id
-),
-TransactionsWithRowNumber AS (
+        t.signer_account_id;
+
+CREATE TABLE Active_Months_Per_Signer AS WITH TransactionsWithRowNumber AS (
     SELECT
         t.signer_account_id,
         t.transaction_hash,
