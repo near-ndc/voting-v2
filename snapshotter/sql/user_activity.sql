@@ -8,12 +8,16 @@ CREATE TABLE ActiveMonthsPerSigner AS WITH DistinctStakedSigners AS (
         JOIN transactions t ON ro.originated_from_transaction_hash = t.transaction_hash
     WHERE
         ra.action_kind = 'FUNCTION_CALL'
+        and t.status = 'SUCCESS'
+        and ra.args similar to '%"method_name": "(deposit_and_stake|stake)"%'
+        and t.block_height < 108194271
 )
 SELECT
     ds.signer_account_id,
     COUNT(
         DISTINCT TO_CHAR(t.block_date, 'YYYYMM')
-    ) as active_months
+    ) as active_months,
+    COUNT(t.transaction_hash) as transactions
 FROM
     DistinctStakedSigners ds
     JOIN transactions t ON ds.signer_account_id = t.signer_account_id
