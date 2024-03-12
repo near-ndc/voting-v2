@@ -16,3 +16,5 @@ CREATE INDEX idx_transactions_block_date ON transactions (block_date);
 CREATE INDEX idx_transactions_status ON transactions (status);
 
 CREATE INDEX idx_transactions_block_height ON transactions (block_height);
+
+CREATE INDEX idx_receipt_origin_transaction_receipt_id ON receipt_origin_transaction (receipt_id);
