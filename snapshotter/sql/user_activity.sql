@@ -7,7 +7,6 @@ CREATE TABLE Active_Months_Per_Signer AS WITH DistinctStakedSigners AS (
         JOIN receipt_origin_transaction ro ON ro.receipt_id = ra.receipt_id
         JOIN transactions t ON ro.originated_from_transaction_hash = t.transaction_hash
     WHERE
-        pc.receipt_predecessor_account_id like '%poolv1.near'
         /* the last block that receives 103 confirmations before the 00:00 PST on the 17.12.2023. */
         ra.block_height < 108194271
         and ra.action_kind = 'FUNCTION_CALL'
