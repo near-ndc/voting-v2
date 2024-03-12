@@ -1,4 +1,4 @@
-CREATE TABLE ActiveMonthsPerSigner AS WITH DistinctStakedSigners AS (
+CREATE TABLE Active_Months_Per_Signer AS WITH DistinctStakedSigners AS (
     SELECT
         DISTINCT t.signer_account_id
     FROM
@@ -8,11 +8,13 @@ CREATE TABLE ActiveMonthsPerSigner AS WITH DistinctStakedSigners AS (
         JOIN transactions t ON ro.originated_from_transaction_hash = t.transaction_hash
     WHERE
         pc.receipt_predecessor_account_id like '%poolv1.near'
-        and ra.action_kind = 'FUNCTION_CALL'
-        and t.status = 'SUCCESS'
-        and ra.args similar to '%"method_name": "(deposit_and_stake|stake)"%'
         /* the last block that receives 103 confirmations before the 00:00 PST on the 17.12.2023. */
-        and t.block_height < 108194271
+        ra.block_height < 108194271
+        and ra.action_kind = 'FUNCTION_CALL'
+        and t.status = 'SUCCESS_RECEIPT_ID'
+        and ra.args similar to '%"method_name": "(deposit_and_stake|stake)"%'
+    GROUP BY
+        t.signer_account_id
 ),
 TransactionsWithRowNumber AS (
     SELECT
@@ -40,7 +42,8 @@ SELECT
             ELSE NULL
         END,
         ','
-    ) as example_transaction_hashes STRING_AGG(
+    ) as example_transaction_hashes,
+    STRING_AGG(
         CASE
             WHEN tr.rn = 1 THEN tr.formatted_date
             ELSE NULL
