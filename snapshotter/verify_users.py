@@ -16,7 +16,7 @@ parser.add_argument('--column', help='Column name in the table', default=os.gete
 args = parser.parse_args()
 
 # Function to check if records exist for each name in the JSON file
-def check_records(cursor, table_name, json_path):
+def check_records(cursor, table_name, column, json_path):
     # Read the JSON file and extract the names
     with open(json_path, 'r') as file:
         data = json.load(file)
@@ -24,7 +24,7 @@ def check_records(cursor, table_name, json_path):
 
     # Check for each name in the database
     for name in names:
-        cursor.execute(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE {column_name} = %s)", (name,))
+        cursor.execute(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE {column} = %s)", (name,))
         exists = cursor.fetchone()[0]
 
         if exists:
@@ -52,4 +52,4 @@ if __name__ == "__main__":
         'password': args.password,
         'host': args.host
     }
-    main(db_params, args.table, args.json)
+    main(db_params, args.table, args.column, args.json)
