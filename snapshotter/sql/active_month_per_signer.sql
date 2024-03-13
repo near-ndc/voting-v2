@@ -1,5 +1,5 @@
 SET
-    work_mem = '2GB';
+    work_mem = '4GB';
 
 CREATE TABLE Active_Months_Per_Signer AS WITH TransactionsWithRowNumber AS (
     SELECT
