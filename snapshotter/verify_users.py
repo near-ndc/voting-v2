@@ -11,6 +11,7 @@ parser.add_argument('--password', help='Database password', default=os.getenv('D
 parser.add_argument('--host', help='Database host', default=os.getenv('DB_HOST'))
 parser.add_argument('--table', help='Target table name', default=os.getenv('TABLE_NAME'))
 parser.add_argument('--json', help='Path to the JSON file', default=os.getenv('JSON_PATH'))
+parser.add_argument('--column', help='Column name in the table', default=os.getenv('COLUMN_NAME'))
 
 args = parser.parse_args()
 
@@ -20,9 +21,6 @@ def check_records(cursor, table_name, json_path):
     with open(json_path, 'r') as file:
         data = json.load(file)
         names = list(data.keys())
-
-    # Column name in your table that corresponds to the names in the JSON file
-    column_name = 'name_column'  # Replace with your actual column name
 
     # Check for each name in the database
     for name in names:
