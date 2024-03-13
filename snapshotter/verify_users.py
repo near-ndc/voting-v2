@@ -33,12 +33,12 @@ def check_records(cursor, table_name, column, json_path):
             print(f"Record for '{name}' does NOT exist in the database.")
 
 # Main function to connect to the database and check the records
-def main(db_params, table_name, json_path):
+def main(db_params, table_name, column, json_path):
     conn = psycopg2.connect(**db_params)
     cursor = conn.cursor()
 
     try:
-        check_records(cursor, table_name, json_path)
+        check_records(cursor, table_name, column, json_path)
     except Exception as e:
         print(f"An error occurred: {e}")
     finally:
