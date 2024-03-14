@@ -1,6 +1,9 @@
 SET
     work_mem = '4GB';
 
+SET
+    max_parallel_workers_per_gather = 8;
+
 CREATE TABLE DistinctStakedSigners AS
 SELECT
     DISTINCT t.signer_account_id
@@ -14,6 +17,6 @@ WHERE
     ra.block_height < 108194271
     and ra.action_kind = 'FUNCTION_CALL'
     and t.status = 'SUCCESS_RECEIPT_ID'
-    and ra.args similar to '%"method_name": "(deposit_and_stake|stake)"%'
+    and ra.args similar to '%"method_name": "(deposit_and_stake|stake|unstake_all|unstake|new)"%'
 GROUP BY
     t.signer_account_id;
