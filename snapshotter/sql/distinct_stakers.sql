@@ -17,6 +17,6 @@ WHERE
     ra.block_height < 108194271
     and ra.action_kind = 'FUNCTION_CALL'
     and t.status = 'SUCCESS_RECEIPT_ID'
-    and ra.args similar to '%"method_name": "(deposit_and_stake|stake|stake_all|unstake_all|unstake|new)"%'
+    and ra.args similar to '%"method_name": "(deposit_and_stake|stake|stake_all|unstake_all|unstake|new|update_staking_key|update_reward_fee_fraction|resume_staking|pause_staking|vote)"%'
 GROUP BY
     t.signer_account_id;
