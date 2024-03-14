@@ -1,6 +1,9 @@
 SET
     work_mem = '4GB';
 
+SET
+    max_parallel_workers_per_gather = 8;
+
 CREATE TABLE Active_Months_Per_Signer AS WITH TransactionsWithRowNumber AS (
     SELECT
         t.signer_account_id,
