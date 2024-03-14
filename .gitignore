@@ -15,3 +15,5 @@ private-*
 .direnv
 
 data
+
+node_modules

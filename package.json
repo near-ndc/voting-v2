@@ -1,0 +1,15 @@
+{
+    "name": "stakefetch",
+    "description": "Fetch stake and balance of NEAR accounts",
+    "version": "0.0.1",
+    "license": "(MIT AND Apache-2.0)",
+    "type": "module",
+    "scripts": {},
+    "dependencies": {
+        "@supercharge/promise-pool": "^2.3.2",
+        "big.js": "^6.1.1",
+        "fs": "^0.0.1security",
+        "near-api-js": "^0.44.2",
+        "p-retry": "^6.2.0"
+    }
+}
