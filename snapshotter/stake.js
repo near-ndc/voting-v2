@@ -141,7 +141,7 @@ Promise.all(loadDelegatorsNumberPromises).then(async allValidatorsDetails => {
     console.log("====");
     console.log(`${Object.keys(allDelegators).length} unique delegators found. Total Staked: ${totalStake.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,')}`);
 
-    fs.writeFileSync(`stakes_${blockId}.json`, JSON.stringify(allDelegators));
+    fs.writeFileSync(`stakes_${blockId}.json`, JSON.stringify({ ...allDelegators }));
     console.log(`File ${`stakes_${blockId}.json`} has been updated`);
 
 });
