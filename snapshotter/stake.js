@@ -119,7 +119,7 @@ async function loadDelegatorsFromValidators(validators) {
         .withConcurrency(8)
         .for(validators)
         .process(async (accountId) =>
-            pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { retries: 1 })
+            pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { retries: 20 })
                 .then(number_of_accounts => ({ account_id: accountId, number_of_accounts }))
         );
 
@@ -146,7 +146,7 @@ async function loadDelegatorsFromValidators(validators) {
             }, blockId).then((accounts) => {
                 console.log(`Loading ${validatorRequest.account_id} delegators: batch #${1 + validatorRequest.from_index / 100}, added ${accounts.length} accounts`)
                 return accounts;
-            }), { retries: 2 });
+            }), { retries: 20 });
             return data;
         });
     if (delegatorsError.length > 0) {
