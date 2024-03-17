@@ -91,7 +91,7 @@ const processLockups = async (delegators) => {
         .withConcurrency(8)
         .for(lockupDelegators)
         .process(async (lockupAccount) => {
-            let account_id = await pRetry(() => processLockup(lockupAccount), { retries: 20 });
+            let account_id = await pRetry(() => processLockup(lockupAccount), { retries: 100 });
             return { lockupAccount, account_id };
         });
 
@@ -119,7 +119,7 @@ async function loadDelegatorsFromValidators(validators) {
         .withConcurrency(8)
         .for(validators)
         .process(async (accountId) =>
-            pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { retries: 20 })
+            pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { retries: 100 })
                 .then(number_of_accounts => ({ account_id: accountId, number_of_accounts }))
         );
 
@@ -146,7 +146,7 @@ async function loadDelegatorsFromValidators(validators) {
             }, blockId).then((accounts) => {
                 console.log(`Loading ${validatorRequest.account_id} delegators: batch #${1 + validatorRequest.from_index / 100}, added ${accounts.length} accounts`)
                 return accounts;
-            }), { retries: 20 });
+            }), { retries: 100 });
             return data;
         });
     if (delegatorsError.length > 0) {
