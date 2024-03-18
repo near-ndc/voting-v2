@@ -37,7 +37,7 @@ let jsonPath = options.json;
 
 const NearConfig = {
     networkId: "mainnet",
-    nodeUrl: "https://go.getblock.io/c56f56ef5ae246848ea3e3b66705be4d",
+    nodeUrl: "https://rpc.mainnet.near.org",
     archivalNodeUrl: "https://rpc.mainnet.internal.near.org",
     walletUrl: "https://wallet.near.org",
 };
@@ -95,7 +95,7 @@ const processLockups = async (delegators) => {
     let lockupDelegators = Object.keys(delegators).filter(account_id => account_id.endsWith('.lockup.near'));
 
     const { results: lockupResults, errors: lockupErrors } = await PromisePool
-        .withConcurrency(8)
+        .withConcurrency(24)
         .for(lockupDelegators)
         .process(async (lockupAccount) => {
             let account_id = await pRetry(() => processLockup(lockupAccount), { retries: 100 });
@@ -152,7 +152,7 @@ async function loadDelegatorsFromValidators(validators) {
     });
 
     const { results: delegators, errors: delegatorsError } = await PromisePool
-        .withConcurrency(8)
+        .withConcurrency(24)
         .for(validatorRequests)
         .process(async (validatorRequest, index, pool) => {
             const data = await pRetry(() => _near.viewCall(validatorRequest.account_id, "get_accounts", {
