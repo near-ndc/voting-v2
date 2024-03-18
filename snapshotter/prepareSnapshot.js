@@ -50,10 +50,12 @@ await client.end();
 
 console.log("Loaded activity data for", activityData.length, "accounts");
 
+let staked = 0;
+
 const activityDataWithStake = activityData.map((activity) => {
     const stake = stakeData[activity.signer_account_id] ?? '0';
-    if (stake > 0) {
-        console.log(`Account ${activity.account_id} has stake ${stake}`);
+    if (stake !== '0') {
+        staked += 1;
     }
     const example_months = activity.example_months.split(',');
     const example_transaction_hashes = activity.example_transaction_hashes.split(',');
@@ -70,8 +72,25 @@ const activityDataWithStake = activityData.map((activity) => {
         stake
     }
 });
+for (const [key, value] of Object.entries(stakeData)) {
+    if (!activityData.find((activity) => activity.signer_account_id === key)) {
+        // It's possible that user doesn't create it's own transaction. Lockup contract can create it for them.
+        // Or, it's dao account, but transaction is always created by some user.
+        activityDataWithStake.push({
+            account_id: key,
+            example_months: [],
+            example_transaction_hashes: [],
+            active_months: 0,
+            transactions: 0,
+            stake: value
+        });
+    }
+}
+
+assert(staked === Object.keys(stakeData).length, 'Number of staked accounts should be the same as in the stake data');
 
 console.log(`Writing snapshot to snapshot-${blockId}.json`);
 console.log(activityDataWithStake);
+
 
 fs.writeFileSync(`snapshot-${blockId}.json`, JSON.stringify({ block_id: blockId, data: activityDataWithStake }));
