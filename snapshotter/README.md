@@ -1,11 +1,11 @@
 # Snapshotter
 
-This scripts are used to create a snapshot for the NDC voting v2.
+These scripts are used to create a snapshot for the NDC voting v2.
 
 ## Prerequisites
 
 This application uses near big query dataset to get the activity data.
-Given the fact that we use snapshot for the particular block in the past, we decided to download the data to the local postgres to make development cheaper.
+Given that we have used snapshots for a particular block in the past, we decided to download the data to the local Postgres to make development cheaper.
 
 Required tables:
 
@@ -13,13 +13,13 @@ Required tables:
 * receipt_actions
 * receipt_origin_transaction
 
-You can download big query dataset to the google cloud storage and then download data to the local server. At the 18 March 2024, the cost of migration is about 100$ + Tax (99% is outbound download) and the dataset is about 3.1TB (including indexes) of uncompressed data.
+You can download the big query dataset to Google Cloud storage and then download the data to the local server. On 18 March 2024, the cost of migration was about $100 + Tax (99% is outbound download), and the dataset was about 3.1TB (including indexes) of uncompressed data.
 
-To simplify loading, we provide a [./db_loader/load.py](script) that loads zips into postgres database.
+To simplify loading, we provide a [./db_loader/load.py](script) that loads zips into the Postgres database.
 
 ## Creating snapshot
 
-* Create indexes for loaded data. May take up to 8 hours (and takes about 500GB)
+* Create indexes for loaded data. It may take up to 8 hours (and takes about 500GB)
   
   ```bash
   psql -f sql/indexes.sql >> indexes.nohup.log
@@ -35,19 +35,19 @@ To simplify loading, we provide a [./db_loader/load.py](script) that loads zips 
   
   ```bash
     npm i
-    # It loads all validators. Loads all the delegators for validators contracts.
-    # Postprocesses lockups and other contracts that implements staking pool interface.
-    # Also, it loads data skipped users into `distinctstakedsigners` table (e.g. users that only staked through some non-native pools) 
+    # It loads all validators. Loads all the delegators for validators' contracts.
+    # Postprocesses lockups and other contracts that implement staking pool interface.
+    # Also, it loads data skipped users into the `distinctstakedsigners` table (e.g., users that only staked through some non-native pools) 
     node snapshotter/stake.js --dbname SOME_DB --user SOME_USER --password SOME_PASS --host 127.0.0.1 --table distinctstakedsigners --block 108194270 --column signer_account_id  > stake.out
   ```
 
 * Process activity data for all users in the `distinctstakedsigners` table
   
   ```bash
-  psql -f snapshotter/sql/active_month_per_signer.sql  > active_months.nohup.log
+  psql -f sql/active_month_per_signer.sql  > active_months.nohup.log
   ```
 
-* Create snapshot from the data. Please use .fixed version of json. This json is postprocessed to parse other contracts and lockups.
+* Create a snapshot from the data. Please use the .fixed version of JSON. This JSON is postprocessed to parse other contracts and lockups.
 
   ```bash
   node snapshotter/prepareSnapshot.js --dbname SOME_DB --user SOME_USER --password SOME_PASS --host 127.0.0.1 --table active_months_per_signer --block 108194270 --json stakes_108194270.fixed.json
