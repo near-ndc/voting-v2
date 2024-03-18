@@ -102,7 +102,7 @@ const processLockups = async (delegators) => {
         .process(async (lockupAccount) => {
             return pRetry(() => processLockup(lockupAccount).then((account_id) => {
                 return { lockupAccount, account_id };
-            }), { retries: 500, onFailedAttempt });
+            }), { retries: 100, factor: 0, onFailedAttempt });
         });
 
     if (lockupErrors.length > 0) {
@@ -139,7 +139,7 @@ async function loadDelegatorsFromValidators(validators) {
         .for(validators.filter(accountId => recursePrevent[accountId] !== 1))
         .process(async (accountId) => {
             recursePrevent[accountId] = 1;
-            return pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { shouldRetry: (err) => !err.message.includes("Contract method is not found"), onFailedAttempt, retries: 100 })
+            return pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { shouldRetry: (err) => !err.message.includes("Contract method is not found"), onFailedAttempt, retries: 100, factor: 1 })
                 .then(number_of_accounts => ({ account_id: accountId, number_of_accounts }));
         }
         );
