@@ -107,7 +107,7 @@ const processLockups = async (delegators) => {
     }
 
     lockupResults.forEach(result => {
-        delegators[result.account_id] = delegators[result.account_id] + delegators[result.lockupAccount];
+        delegators[result.account_id] = (delegators[result.account_id] ?? 0) + delegators[result.lockupAccount];
         delete delegators[result.lockupAccount];
     });
 
