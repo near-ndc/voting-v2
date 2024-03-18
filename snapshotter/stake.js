@@ -87,8 +87,7 @@ const processLockup = async (lockup) => {
         .then(owner => {
             console.log(`Lockup ${lockup} owned by ${owner} at block ${blockId}`);
             return owner
-        })
-        .catch((e) => console.error(e));
+        });
 };
 
 const processLockups = async (delegators) => {
@@ -98,8 +97,9 @@ const processLockups = async (delegators) => {
         .withConcurrency(24)
         .for(lockupDelegators)
         .process(async (lockupAccount) => {
-            let account_id = await pRetry(() => processLockup(lockupAccount), { retries: 100 });
-            return { lockupAccount, account_id };
+            return pRetry(() => processLockup(lockupAccount).then((account_id) => {
+                return { lockupAccount, account_id };
+            }), { retries: 500, onFailedAttempt });
         });
 
     if (lockupErrors.length > 0) {
@@ -127,14 +127,18 @@ async function checkRecordsExist(client, accountIds) {
 
 }
 
+let recursePrevent = {};
+
 async function loadDelegatorsFromValidators(validators) {
     console.log(`Loading delegators from ${validators.length} validators...`);
     const { results: allValidatorsDetails, errors: poolsError } = await PromisePool
         .withConcurrency(8)
-        .for(validators)
-        .process(async (accountId) =>
-            pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { shouldRetry: (err) => !err.message.includes("MethodResolveError(MethodNotFound)"), retries: 100 })
-                .then(number_of_accounts => ({ account_id: accountId, number_of_accounts }))
+        .for(validators.filter(accountId => recursePrevent[accountId] !== 1))
+        .process(async (accountId) => {
+            recursePrevent[accountId] = 1;
+            return pRetry(() => _near.viewCall(accountId, "get_number_of_accounts", {}, blockId), { shouldRetry: (err) => !err.message.includes("Contract method is not found"), onFailedAttempt, retries: 100 })
+                .then(number_of_accounts => ({ account_id: accountId, number_of_accounts }));
+        }
         );
 
 
@@ -161,7 +165,7 @@ async function loadDelegatorsFromValidators(validators) {
             }, blockId).then((accounts) => {
                 console.log(`Loading ${validatorRequest.account_id} delegators: batch #${1 + validatorRequest.from_index / 100}, added ${accounts.length} accounts`)
                 return accounts;
-            }), { retries: 100, shouldRetry: (err) => !err.message.includes("MethodResolveError(MethodNotFound)") });
+            }), { retries: 100, factor: 1, shouldRetry: (err) => !err.message.includes("Contract method is not found"), onFailedAttempt });
             return data;
         });
     if (delegatorsError.length > 0) {
@@ -190,12 +194,18 @@ async function addToDatabase(client, accounts) {
     if (accounts === undefined || accounts.length === 0) {
         return {};
     }
-    const accountString = accounts.map((value) => `'${value}'`).join(', ');
-    const query = `INSERT INTO ${tableName} (${columnName}) VALUES (${accountString})`;
+    const accountString = accounts.map((value) => `('${value}')`).join(', ');
+    const query = `INSERT INTO ${tableName} (${columnName}) VALUES ${accountString}`;
     const res = await client.query(query);
     return res;
 
 }
+
+const onFailedAttempt = (error) => {
+    if (error.attemptNumber > 5) {
+        console.log(`Failed attempt for ${error.attemptNumber}: ${error.message}$`)
+    }
+};
 
 async function processGaps(accountsOrPools, client) {
     if (accountsOrPools === undefined || accountsOrPools.length === 0) {
@@ -205,16 +215,19 @@ async function processGaps(accountsOrPools, client) {
     // Check if user has a contract
     console.log(`Checking ${accountsOrPools.length} accounts...`)
     let { results: accounts, errors } = await PromisePool
-        .withConcurrency(8)
+        .withConcurrency(24)
         .for(accountsOrPools)
         .process(async (account) =>
             pRetry(() =>
                 _near.viewAccount(account.account_id, blockId)
                     .then((data) => { return { ...account, data } }),
                 {
-                    retries: 20,
-                    // Account deleted :(
-                    shouldRetry: (err) => !err.message.includes("does not exist while viewing")
+                    retries: 100, factor: 1,
+                    // Account deleted :( or invalid params it means it's some internal account or something like that (see ..NSLP..)
+                    // https://github.com/Narwallets/meta-pool/blob/04b6ed9f53be93b94b17fb8135163be7b25bf710/metapool/src/types.rs#L14
+                    shouldRetry: (err) => !err.message.includes(`doesn't exist`) && !err.message.includes("Invalid params:"),
+                    onFailedAttempt,
+
                 }
             )
         );
@@ -234,11 +247,11 @@ async function processGaps(accountsOrPools, client) {
     }
     let added = [];
 
-    for (let i in failedAccoutns) {
-        let contract = pools[i];
-        console.log('Unsupported staking mechanism: Adding to the database:', contract.account_id);
-        newDelegators[contract.account_id] = (newDelegators[contract.account_id] ?? 0) + contract.stake;
-        added.push(contract.account_id);
+    for (let account_id of failedAccoutns) {
+        let stake = pools.find(pool => pool.account_id === account_id).stake;
+        console.log('Unsupported staking mechanism: Adding to the database:', account_id);
+        newDelegators[account_id] = (newDelegators[account_id] ?? 0) + stake;
+        added.push(account_id);
     }
     for (let account of users) {
         console.log('Missed account: Adding to the database:', account.account_id);
