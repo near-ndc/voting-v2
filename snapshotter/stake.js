@@ -225,7 +225,7 @@ async function processGaps(accountsOrPools, client) {
                 _near.viewAccount(account.account_id, blockId)
                     .then((data) => { return { ...account, data } }),
                 {
-                    retries: 100, factor: 1,
+                    retries: 500, factor: 1,
                     // Account deleted :( or invalid params it means it's some internal account or something like that (see ..NSLP..)
                     // https://github.com/Narwallets/meta-pool/blob/04b6ed9f53be93b94b17fb8135163be7b25bf710/metapool/src/types.rs#L14
                     shouldRetry: (err) => !err.message.includes(`doesn't exist`) && !err.message.includes("Invalid params:"),
