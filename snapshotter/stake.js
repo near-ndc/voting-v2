@@ -24,7 +24,7 @@ program
 program.parse(process.argv);
 const options = program.opts();
 
-let blockId = options.block;
+let blockId = parseInt(options.block);
 const dbParams = {
     database: options.dbname,
     user: options.user,
