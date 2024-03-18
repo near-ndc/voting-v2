@@ -10,6 +10,9 @@ import { program } from 'commander';
 
 const EMPTY_HASH = '11111111111111111111111111111111'
 
+// We don't want to have exponential notation in toString
+Big.PE = 1000;
+
 program
     .description('Load and process staking pools data from NEAR blockchain.')
     .option('--block <type>', 'Block ID to fetch data from', '108194270')
