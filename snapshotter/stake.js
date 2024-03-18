@@ -24,7 +24,7 @@ program
 program.parse(process.argv);
 const options = program.opts();
 
-let blockId = 108194270;
+let blockId = options.block;
 const dbParams = {
     database: options.dbname,
     user: options.user,
@@ -107,7 +107,7 @@ const processLockups = async (delegators) => {
     }
 
     lockupResults.forEach(result => {
-        delegators[result.account_id] = (delegators[result.account_id] ?? 0) + delegators[result.lockupAccount];
+        delegators[result.account_id] = (delegators[result.account_id] ?? new Big(0)).add(delegators[result.lockupAccount]);
         delete delegators[result.lockupAccount];
     });
 
@@ -179,10 +179,10 @@ async function loadDelegatorsFromValidators(validators) {
     let results = {};
     delegators.map(accounts => {
         accounts.map(account => {
-            let stakedBalance = parseFloat(new Big(account.staked_balance).div(new Big(10).pow(24)).toFixed(2));
+            let stakedBalance = new Big(account.staked_balance);
             if (stakedBalance > 0) {
-                let balance = results[account.account_id] ?? 0;
-                results[account.account_id] = balance + stakedBalance;
+                let balance = results[account.account_id] ?? new Big(0);
+                results[account.account_id] = balance.add(stakedBalance);
             }
         });
     });
@@ -250,12 +250,12 @@ async function processGaps(accountsOrPools, client) {
     for (let account_id of failedAccoutns) {
         let stake = pools.find(pool => pool.account_id === account_id).stake;
         console.log('Unsupported staking mechanism: Adding to the database:', account_id);
-        newDelegators[account_id] = (newDelegators[account_id] ?? 0) + stake;
+        newDelegators[account_id] = (newDelegators[account_id] ?? new Big(0)).add(stake);
         added.push(account_id);
     }
     for (let account of users) {
         console.log('Missed account: Adding to the database:', account.account_id);
-        newDelegators[account.account_id] = (newDelegators[account.account_id] ?? 0) + account.stake;
+        newDelegators[account.account_id] = (newDelegators[account.account_id] ?? new Big(0)).add(account.stake);
         added.push(account.account_id);
     }
 
@@ -290,7 +290,7 @@ async function checkAndFixGaps(delegators, client) {
         result[account] = newDelegators[account];
     }
     for (let account of existedDelegators) {
-        result[account.account_id] = (result[account.account_id] ?? 0) + account.stake;
+        result[account.account_id] = (result[account.account_id] ?? new Big(0)).add(account.stake);
     }
     return result;
 }
@@ -307,11 +307,14 @@ if (jsonPath === undefined) {
     if (errors.length > 0) {
         console.log("Errors", errors);
     }
+    Object.keys(results).forEach(key => results[key] = results[key].toString());
+
     fs.writeFileSync(`stakes_${blockId}.json`, JSON.stringify({ ...results }));
     jsonPath = `stakes_${blockId}.json`;
 }
 
 const initialDelegators = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+Object.keys(initialDelegators).forEach(key => initialDelegators[key] = new Big(initialDelegators[key]));
 
 
 const client = new Client(dbParams);
