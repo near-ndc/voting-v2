@@ -15,7 +15,7 @@ Required tables:
 
 You can download the big query dataset to Google Cloud storage and then download the data to the local server. On 18 March 2024, the cost of migration was about $100 + Tax (99% is outbound download), and the dataset was about 3.1TB (including indexes) of uncompressed data.
 
-To simplify loading, we provide a [./db_loader/load.py](script) that loads zips into the Postgres database.
+To simplify loading, we provide a `./db_loader/load.py` that loads zips into the Postgres database.
 
 ## Creating snapshot
 
