@@ -55,5 +55,5 @@ To simplify loading, we provide a `./db_loader/load.py` that loads zips into the
 
 * Congratulations, you have created a snapshot.
 
-
+* Upload zip archive of it to IPFS
 
