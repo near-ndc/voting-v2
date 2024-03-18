@@ -33,7 +33,7 @@ const dbParams = {
 };
 const tableName = options.table;
 const columnName = options.column;
-const jsonPath = options.json;
+let jsonPath = options.json;
 
 const NearConfig = {
     networkId: "mainnet",
@@ -282,7 +282,6 @@ async function checkAndFixGaps(delegators, client) {
     return result;
 }
 
-let initialDelegators = {};
 if (jsonPath === undefined) {
     // Load pools from the chain
     const blockInfo = await _near.nearArchivalConnection.provider.block({ blockId });
@@ -295,13 +294,12 @@ if (jsonPath === undefined) {
     if (errors.length > 0) {
         console.log("Errors", errors);
     }
-
-    initialDelegators = results;
-} else {
-    // Read the JSON file and extract the names
-    const data = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-    initialDelegators = data;
+    fs.writeFileSync(`stakes_${blockId}.json`, JSON.stringify({ ...results }));
+    jsonPath = `stakes_${blockId}.json`;
 }
+
+const initialDelegators = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
+
 
 const client = new Client(dbParams);
 await client.connect();
