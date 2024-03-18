@@ -102,7 +102,7 @@ const processLockups = async (delegators) => {
         .process(async (lockupAccount) => {
             return pRetry(() => processLockup(lockupAccount).then((account_id) => {
                 return { lockupAccount, account_id };
-            }), { retries: 100, factor: 0, onFailedAttempt });
+            }), { retries: 100, factor: 0, onFailedAttempt, shouldRetry: (err) => !err.message.includes("doesn't exist") });
         });
 
     if (lockupErrors.length > 0) {
@@ -205,7 +205,7 @@ async function addToDatabase(client, accounts) {
 }
 
 const onFailedAttempt = (error) => {
-    if (error.attemptNumber > 5) {
+    if (error.attemptNumber > 20) {
         console.log(`Failed attempt for ${error.attemptNumber}: ${error.message}$`)
     }
 };
