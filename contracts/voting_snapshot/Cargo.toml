@@ -10,7 +10,7 @@ license.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-near-sdk.workspace = true
+near-sdk = { workspace = true, features = ["unstable"] }
 borsh.workspace = true
 serde.workspace = true
 

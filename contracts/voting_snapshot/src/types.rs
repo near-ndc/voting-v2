@@ -1,6 +1,6 @@
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
-    AccountId, NearToken,
+    NearToken,
 };
 
 pub type VoteWeight = u32;
@@ -15,22 +15,24 @@ pub type VoteWeight = u32;
     Debug,
     PartialEq,
 )]
+#[serde(crate = "near_sdk::serde")]
 pub struct VoteConfig {
     pub threshold_in_nears: u32,
     pub activity_reward_in_votes: u32,
 }
 
-#[derive(Clone, BorshSerialize, BorshDeserialize, Debug)]
-pub struct User {
-    pub account_id: AccountId,
+#[derive(
+    Clone, BorshSerialize, BorshDeserialize, serde::Serialize, serde::Deserialize, Debug, PartialEq,
+)]
+#[serde(crate = "near_sdk::serde")]
+pub struct UserData {
     pub active_months: u32,
     pub stake: NearToken,
 }
 
-impl User {
-    pub fn new(account_id: AccountId, active_months: u32, stake: NearToken) -> Self {
+impl UserData {
+    pub fn new(active_months: u32, stake: NearToken) -> Self {
         Self {
-            account_id,
             active_months,
             stake,
         }
@@ -56,17 +58,11 @@ impl User {
 
 #[cfg(test)]
 mod test {
-    use std::str::FromStr;
-
     use super::*;
 
     #[test]
     fn test_vote_weight() {
-        let user = User::new(
-            AccountId::from_str("aaa.near").unwrap(),
-            1,
-            NearToken::from_near(1),
-        );
+        let user = UserData::new(1, NearToken::from_near(1));
         let vote_config = VoteConfig {
             threshold_in_nears: 1,
             activity_reward_in_votes: 1,
@@ -76,11 +72,7 @@ mod test {
 
     #[test]
     fn test_threshhold() {
-        let user = User::new(
-            AccountId::from_str("aaa.near").unwrap(),
-            5,
-            NearToken::from_near(10500),
-        );
+        let user = UserData::new(5, NearToken::from_near(10500));
         let vote_config = VoteConfig {
             threshold_in_nears: 500,
             activity_reward_in_votes: 1,
@@ -90,11 +82,7 @@ mod test {
 
     #[test]
     fn test_threshhold_rounding() {
-        let user = User::new(
-            AccountId::from_str("aaa.near").unwrap(),
-            5,
-            NearToken::from_near(10600),
-        );
+        let user: UserData = UserData::new(5, NearToken::from_near(10600));
         let vote_config = VoteConfig {
             threshold_in_nears: 500,
             activity_reward_in_votes: 3,

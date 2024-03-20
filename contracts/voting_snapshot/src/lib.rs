@@ -1,22 +1,28 @@
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
-use near_sdk::{near_bindgen, AccountId};
-use types::VoteConfig;
+use near_sdk::store::LookupMap;
+use near_sdk::{near_bindgen, AccountId, PanicOnDefault};
 
 pub mod admin;
 pub mod consts;
+pub mod storage;
 pub mod types;
 pub mod view;
+
+use storage::StorageKey;
+use types::{UserData, VoteConfig};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests;
 
 // Define the contract structure
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct Contract {
     vote_config: types::VoteConfig,
     admin: AccountId,
+
+    eligible_voters: LookupMap<AccountId, UserData>,
 }
 
 // Implement the contract structure
@@ -24,6 +30,10 @@ pub struct Contract {
 impl Contract {
     #[init]
     pub fn new(admin: AccountId, vote_config: VoteConfig) -> Self {
-        Self { admin, vote_config }
+        Self {
+            admin,
+            vote_config,
+            eligible_voters: LookupMap::new(StorageKey::EligibleVoters),
+        }
     }
 }
