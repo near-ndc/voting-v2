@@ -7,4 +7,5 @@ pub enum StorageKey {
     EligibleVoters,
     Voters,
     Nominees,
+    Challengers,
 }

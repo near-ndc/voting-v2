@@ -1,17 +1,21 @@
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::env::{predecessor_account_id, signer_account_id};
 use near_sdk::store::{LookupMap, LookupSet};
-use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault, PublicKey};
+use near_sdk::{
+    env, near_bindgen, require, AccountId, NearToken, PanicOnDefault, Promise, PromiseResult,
+    PublicKey,
+};
 
 pub mod admin;
 pub mod consts;
+pub mod ext;
 pub mod storage;
 pub mod types;
 pub mod view;
 
 use consts::*;
 use storage::StorageKey;
-use types::{UserData, VoteConfig};
+use types::{SnapshotConfig, Status, UserData, VoteWeightConfig};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod test_utils;
@@ -21,10 +25,16 @@ mod test_utils;
 #[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct Contract {
-    vote_config: types::VoteConfig,
+    vote_config: types::VoteWeightConfig,
+    process_config: types::SnapshotConfig,
     admin: AccountId,
+    status: Status,
 
-    // This is basically a snapshot of the voters at the time of the vote
+    end_time_in_millis: u64,
+
+    // This is basically a snapshot but without unnecessary data
+    // for full snapshot, please refer to the IPFS storage
+    // Will be cleaned on halt.
     eligible_voters: LookupMap<AccountId, UserData>,
 
     // We need to collect the ones who want to participate in the vote process
@@ -33,47 +43,178 @@ pub struct Contract {
     // Also, this user indicates that he/she accepts conduct of fair voting
     voters: LookupMap<AccountId, PublicKey>,
     nominees: LookupSet<AccountId>,
+
+    // People can deposit NEAR to challenge snapshot
+    // If the challenge is successful, the voting snapshot will be halted
+    // Also, this provides amount of how much user spent to challenge the snapshot
+    // The total number of challengers can be > than the config parameters because of the
+    // several attempts.
+    challengers: LookupMap<AccountId, NearToken>,
+    total_challenged: NearToken,
 }
 
 // Implement the contract structure
 #[near_bindgen]
 impl Contract {
     #[init]
-    pub fn new(admin: AccountId, vote_config: VoteConfig) -> Self {
+    pub fn new(
+        admin: AccountId,
+        vote_config: VoteWeightConfig,
+        process_config: SnapshotConfig,
+    ) -> Self {
         Self {
             admin,
+            status: Status::Initialization(0),
+            process_config,
             vote_config,
+            end_time_in_millis: 0,
             eligible_voters: LookupMap::new(StorageKey::EligibleVoters),
             voters: LookupMap::new(StorageKey::Voters),
             nominees: LookupSet::new(StorageKey::Nominees),
+            challengers: LookupMap::new(StorageKey::Challengers),
+            total_challenged: NearToken::from_millinear(0),
         }
     }
 
     // Should be called directly as we parse public key from the signer
     // As a result, we need to make sure that the signer is the predecessor
     pub fn register_as_voter(&mut self) {
+        self.try_move_stage();
+
         let signer = signer_account_id();
         require!(signer == predecessor_account_id(), DIRECT_CALL);
-        require!(
-            self.eligible_voters.contains_key(&signer),
-            NOT_ELIGIBLE_VOTER
-        );
+        self.assert_eligible_voter(&signer);
 
         self.voters.insert(signer, env::signer_account_pk());
     }
 
     // Can be called indirectly as we parse public key from the input
     pub fn register_as_voter_with_pubkey(&mut self, public_key: PublicKey) {
+        self.try_move_stage();
+
         let user = env::predecessor_account_id();
-        require!(self.eligible_voters.contains_key(&user), NOT_ELIGIBLE_VOTER);
+        self.assert_eligible_voter(&user);
 
         self.voters.insert(user, public_key);
     }
 
     pub fn register_as_nominee(&mut self) {
+        self.try_move_stage();
+
         let user = env::predecessor_account_id();
-        require!(self.eligible_voters.contains_key(&user), NOT_ELIGIBLE_VOTER);
+        self.assert_eligible_voter(&user);
+
         self.nominees.insert(user);
+    }
+
+    // Anybody should be able to challenge the snapshot
+    #[payable]
+    pub fn challenge_snapshot(&mut self) {
+        self.try_move_stage();
+        require!(
+            matches!(self.status, Status::SnapshotChallenge(_)),
+            ON_SNAPSHOT_CHALLENGE_ONLY
+        );
+
+        let user = env::predecessor_account_id();
+        let deposit = env::attached_deposit();
+
+        require!(deposit.as_millinear() > 0, EXPECTED_DEPOSIT);
+
+        self.challengers
+            .entry(user)
+            .and_modify(|user_deposit| {
+                if let Some(new_total) = user_deposit.checked_add(deposit) {
+                    *user_deposit = new_total;
+                } else {
+                    env::panic_str(CHALLENGE_OVERFLOW);
+                }
+            })
+            .or_insert(deposit);
+        if let Some(total) = self.total_challenged.checked_add(deposit) {
+            self.total_challenged = total;
+        } else {
+            env::panic_str(CHALLENGE_OVERFLOW);
+        }
+
+        self.try_halt();
+    }
+
+    // Refund after challenge is over
+    pub fn refund_bond(&mut self) -> Promise {
+        require!(
+            !matches!(self.status, Status::SnapshotChallenge(_)),
+            NOT_ON_SNAPSHOT_CHALLENGE
+        );
+
+        let user = env::predecessor_account_id();
+        let deposit = self.challengers.get(&user);
+
+        if let Some(deposit) = deposit {
+            Promise::new(user.clone()).transfer(*deposit).then(
+                ext::ext_self::ext(env::current_account_id())
+                    .with_static_gas(EXECUTE_CALLBACK_GAS)
+                    .on_refund_success(user),
+            )
+        } else {
+            env::panic_str(NO_DEPOSIT)
+        }
+    }
+
+    #[private]
+    pub fn on_refund_success(&mut self, account_id: AccountId) {
+        require!(env::promise_results_count() == 1, EXPECTED_PROMISE_RESULT);
+
+        match env::promise_result(0) {
+            PromiseResult::Successful(_) => {
+                // We are not interested in total challenged as we are passed the challenge phase
+                self.challengers.remove(&account_id);
+            }
+            PromiseResult::Failed => {}
+        }
+    }
+
+    pub fn try_move_stage(&mut self) {
+        let should_move = env::block_timestamp_ms() >= self.end_time_in_millis;
+
+        match self.status {
+            Status::SnapshotChallenge(attempt) if should_move => {
+                // Last try to halt
+                if !self.try_halt() {
+                    self.status = Status::Registration(attempt);
+                    // We don't use block_timestamp_ms() here to have strict timings
+                    self.end_time_in_millis += self.process_config.registration_timeout_in_millis;
+                }
+            }
+            Status::Registration(attempt) if should_move => {
+                self.status = Status::RegistrationEnded(attempt);
+            }
+            // Explicitly write all cases to fail on new status
+            Status::Initialization(_)
+            | Status::SnapshotChallenge(_)
+            | Status::SnapshotHalted(_)
+            | Status::Registration(_)
+            | Status::RegistrationEnded(_) => {}
+        }
+    }
+
+    fn assert_eligible_voter(&self, user: &AccountId) {
+        require!(
+            matches!(self.status, Status::Registration(_),),
+            ON_REGISTRATION_ONLY
+        );
+        require!(self.eligible_voters.contains_key(user), NOT_ELIGIBLE_VOTER);
+    }
+
+    fn try_halt(&mut self) -> bool {
+        if self.total_challenged.as_near()
+            >= self.process_config.challenge_threshold_in_nears as u128
+        {
+            self.status = Status::SnapshotHalted(self.status.attempt());
+            true
+        } else {
+            false
+        }
     }
 }
 
@@ -81,13 +222,16 @@ impl Contract {
 mod tests {
     use std::str::FromStr;
 
-    use near_sdk::{testing_env, PublicKey};
+    use near_sdk::{testing_env, NearToken, PublicKey};
 
-    use crate::test_utils::*;
+    use crate::{test_utils::*, types::Status};
 
     #[test]
     fn eligible_user_can_register_as_voter() {
         let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
 
         context.signer_account_id = acc(1);
         context.predecessor_account_id = acc(1);
@@ -104,6 +248,9 @@ mod tests {
     fn non_eligible_user_cannot_register_as_voter() {
         let (mut context, mut contract) = setup_ctr(0);
 
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
         context.signer_account_id = acc(0);
         context.predecessor_account_id = acc(0);
         context.signer_account_pk = pk();
@@ -117,6 +264,9 @@ mod tests {
     fn register_as_voter_should_be_called_directly() {
         let (mut context, mut contract) = setup_ctr(0);
 
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
         context.signer_account_id = acc(1);
         context.predecessor_account_id = acc(0);
         context.signer_account_pk = pk();
@@ -128,6 +278,9 @@ mod tests {
     #[test]
     fn eligible_user_can_register_as_voter_with_pubkey() {
         let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
 
         context.predecessor_account_id = acc(1);
         testing_env!(context.clone());
@@ -142,6 +295,9 @@ mod tests {
     fn non_eligible_user_cannot_register_as_voter_with_pubkey() {
         let (mut context, mut contract) = setup_ctr(0);
 
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
         context.predecessor_account_id = acc(0);
         testing_env!(context.clone());
 
@@ -151,6 +307,9 @@ mod tests {
     #[test]
     fn user_can_change_pubkey() {
         let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
 
         context.predecessor_account_id = acc(1);
         context.signer_account_id = acc(1);
@@ -179,6 +338,9 @@ mod tests {
     fn user_can_register_as_nominee() {
         let (mut context, mut contract) = setup_ctr(0);
 
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
         context.predecessor_account_id = acc(1);
         testing_env!(context.clone());
 
@@ -192,9 +354,146 @@ mod tests {
     fn non_eligible_user_cannot_register_as_nominee() {
         let (mut context, mut contract) = setup_ctr(0);
 
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
         context.predecessor_account_id = acc(0);
         testing_env!(context.clone());
 
         contract.register_as_nominee();
+    }
+
+    #[test]
+    #[should_panic(expected = "Allowed only during registration phase")]
+    fn user_cannot_register_as_nominee_after_registration() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+        move_to_end(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(1);
+        testing_env!(context.clone());
+
+        contract.register_as_nominee();
+    }
+
+    #[test]
+    #[should_panic(expected = "Allowed only during registration phase")]
+    fn user_cannot_register_as_voter_after_registration() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+        move_to_end(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(1);
+        testing_env!(context.clone());
+
+        contract.register_as_voter_with_pubkey(pk());
+    }
+
+    #[test]
+    #[should_panic(expected = "Allowed only during registration phase")]
+    fn user_cannot_register_as_voter_before_registration() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+
+        context.signer_account_id = acc(1);
+        context.predecessor_account_id = acc(1);
+        context.signer_account_pk = pk();
+        testing_env!(context.clone());
+
+        contract.register_as_voter();
+    }
+
+    #[test]
+    #[should_panic(expected = "Allowed only during registration phase")]
+    fn user_cannot_register_as_nominee_before_registration() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(1);
+        testing_env!(context.clone());
+
+        contract.register_as_nominee();
+    }
+
+    #[test]
+    #[should_panic(expected = "Not allowed on snapshot challenge phase")]
+    fn user_can_challenge_snapshot_but_cannot_retrieve_money_before_challenge_ends() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(0);
+        context.attached_deposit = NearToken::from_near(1);
+        testing_env!(context.clone());
+
+        contract.challenge_snapshot();
+
+        assert_eq!(
+            contract.get_individual_challenge(&acc(0)),
+            Some(NearToken::from_near(1))
+        );
+
+        contract.refund_bond();
+    }
+
+    #[test]
+    #[should_panic(expected = "No deposit found for the user")]
+    fn wrong_user_cannot_refund() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(0);
+        testing_env!(context.clone());
+        contract.refund_bond();
+    }
+
+    #[test]
+    #[should_panic(expected = "Expected deposit greater than 1 milli NEAR")]
+    fn user_cannot_challenge_snapshot_without_deposit() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(0);
+        testing_env!(context.clone());
+
+        contract.challenge_snapshot();
+    }
+
+    #[test]
+    fn user_can_halt_snapshot_and_retrieve_funds() {
+        let (mut context, mut contract) = setup_ctr(0);
+
+        move_to_challenge(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(0);
+        context.attached_deposit = NearToken::from_near(
+            contract.get_process_config().challenge_threshold_in_nears as u128,
+        );
+        testing_env!(context.clone());
+
+        contract.challenge_snapshot();
+
+        assert!(matches!(contract.get_status(), Status::SnapshotHalted(_)));
+
+        contract.refund_bond();
+        testing_env!(context.clone());
+
+        // Admin can restart
+        context.predecessor_account_id = admin();
+        testing_env!(context.clone());
+
+        contract.restart_to_initialization();
+
+        assert!(matches!(contract.get_status(), Status::Initialization(1)));
+        assert_eq!(contract.get_total_challenge(), NearToken::from_millinear(0));
     }
 }

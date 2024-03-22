@@ -11,8 +11,28 @@ pub struct VoterInformation {
 
 #[near_bindgen]
 impl Contract {
-    pub fn get_vote_config(&self) -> VoteConfig {
+    pub fn get_vote_config(&self) -> VoteWeightConfig {
         self.vote_config
+    }
+
+    pub fn get_process_config(&self) -> SnapshotConfig {
+        self.process_config
+    }
+
+    pub fn get_end_time(&self) -> u64 {
+        self.end_time_in_millis
+    }
+
+    pub fn get_status(&self) -> Status {
+        self.status
+    }
+
+    pub fn get_total_challenge(&self) -> NearToken {
+        self.total_challenged
+    }
+
+    pub fn get_individual_challenge(&self, challenger: &AccountId) -> Option<NearToken> {
+        self.challengers.get(challenger).cloned()
     }
 
     pub fn get_admin(&self) -> AccountId {
@@ -55,7 +75,7 @@ impl Contract {
 
 #[cfg(test)]
 mod tests {
-    use near_sdk::testing_env;
+    use near_sdk::{testing_env, NearToken};
 
     use crate::test_utils::*;
 
@@ -83,6 +103,9 @@ mod tests {
     fn user_can_get_voter_information() {
         let (mut context, mut contract) = setup_ctr(0);
 
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
         context.signer_account_id = acc(1);
         context.predecessor_account_id = acc(1);
         context.signer_account_pk = pk();
@@ -100,5 +123,25 @@ mod tests {
             (acc(1), voter_info),
             contract.get_voters_info(vec![acc(1)])[0]
         );
+    }
+
+    #[test]
+    fn user_can_get_deposit() {
+        let (mut context, mut contract) = setup_ctr(0);
+        move_to_challenge(&mut context, &mut contract);
+
+        assert_eq!(contract.get_individual_challenge(&acc(0)), None);
+
+        context.predecessor_account_id = acc(0);
+        context.attached_deposit = NearToken::from_near(1);
+        testing_env!(context.clone());
+
+        contract.challenge_snapshot();
+
+        assert_eq!(
+            contract.get_individual_challenge(&acc(0)),
+            Some(NearToken::from_near(1))
+        );
+        assert_eq!(contract.get_total_challenge(), NearToken::from_near(1));
     }
 }
