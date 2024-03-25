@@ -11,11 +11,19 @@ impl Contract {
         self.vote_config = vote_config;
     }
 
+    #[payable]
     pub fn bulk_load_voters(&mut self, voters: Vec<(AccountId, UserData)>) {
         self.assert_initialization();
         self.assert_admin();
 
+        let current_storage_usage = env::storage_usage();
+
         self.eligible_voters.extend(voters);
+
+        require!(
+            finalize_storage_check(current_storage_usage, env::predecessor_account_id()),
+            STORAGE_LIMIT_EXCEEDED
+        );
     }
 
     pub fn set_snapshot_config(&mut self, process_config: SnapshotConfig) {

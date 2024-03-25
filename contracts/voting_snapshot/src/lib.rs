@@ -78,33 +78,56 @@ impl Contract {
 
     // Should be called directly as we parse public key from the signer
     // As a result, we need to make sure that the signer is the predecessor
+    #[payable]
     pub fn register_as_voter(&mut self) {
-        self.try_move_stage();
+        let storage = env::storage_usage();
 
         let signer = signer_account_id();
         require!(signer == predecessor_account_id(), DIRECT_CALL);
+
+        self.try_move_stage();
+
         self.assert_eligible_voter(&signer);
 
         self.voters.insert(signer, env::signer_account_pk());
+
+        require!(
+            finalize_storage_check(storage, predecessor_account_id()),
+            STORAGE_LIMIT_EXCEEDED
+        );
     }
 
     // Can be called indirectly as we parse public key from the input
+    #[payable]
     pub fn register_as_voter_with_pubkey(&mut self, public_key: PublicKey) {
+        let storage = env::storage_usage();
+
         self.try_move_stage();
 
         let user = env::predecessor_account_id();
         self.assert_eligible_voter(&user);
 
         self.voters.insert(user, public_key);
+
+        require!(
+            finalize_storage_check(storage, predecessor_account_id()),
+            STORAGE_LIMIT_EXCEEDED
+        );
     }
 
     pub fn register_as_nominee(&mut self) {
+        let storage = env::storage_usage();
+
         self.try_move_stage();
 
         let user = env::predecessor_account_id();
         self.assert_eligible_voter(&user);
 
         self.nominees.insert(user);
+        require!(
+            finalize_storage_check(storage, predecessor_account_id()),
+            STORAGE_LIMIT_EXCEEDED
+        );
     }
 
     // Anybody should be able to challenge the snapshot
@@ -155,7 +178,7 @@ impl Contract {
         if let Some(deposit) = deposit {
             Promise::new(user.clone()).transfer(*deposit).then(
                 ext::ext_self::ext(env::current_account_id())
-                    .with_static_gas(EXECUTE_CALLBACK_GAS)
+                    .with_static_gas(ON_REFUND_SUCCESS_GAS)
                     .on_refund_success(user),
             )
         } else {
@@ -218,6 +241,22 @@ impl Contract {
             false
         }
     }
+}
+
+fn finalize_storage_check(storage_start: u64, user: AccountId) -> bool {
+    let storage_deposit = env::attached_deposit();
+    let required_deposit = (env::storage_usage() as u128)
+        .saturating_sub(storage_start as u128)
+        .saturating_mul(env::storage_byte_cost().as_yoctonear());
+
+    if storage_deposit.as_yoctonear() < required_deposit {
+        return false;
+    }
+    let diff = storage_deposit.as_yoctonear() - required_deposit;
+    if diff > 0 {
+        Promise::new(user).transfer(NearToken::from_yoctonear(diff));
+    }
+    true
 }
 
 #[cfg(test)]
@@ -344,6 +383,7 @@ mod tests {
         move_to_registration(&mut context, &mut contract);
 
         context.predecessor_account_id = acc(1);
+        context.attached_deposit = NearToken::from_millinear(10);
         testing_env!(context.clone());
 
         contract.register_as_nominee();

@@ -9,7 +9,6 @@ pub fn default_vote_config() -> VoteWeightConfig {
         activity_reward_in_votes: 10,
     }
 }
-
 pub fn default_snapshot_config() -> SnapshotConfig {
     SnapshotConfig {
         challenge_threshold_in_nears: 30,

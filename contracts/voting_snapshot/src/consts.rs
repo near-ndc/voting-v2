@@ -16,4 +16,9 @@ pub const NO_DEPOSIT: &str = "No deposit found for the user";
 pub const EXPECTED_DEPOSIT: &str = "Expected deposit greater than 1 milli NEAR";
 pub const EXPECTED_PROMISE_RESULT: &str = "Expected 1 promise result";
 
-pub const EXECUTE_CALLBACK_GAS: Gas = Gas::from_tgas(4);
+pub const STORAGE_LIMIT_EXCEEDED: &str = "Deposit is not enough to cover storage usage";
+
+// Testnet execution shows 3.14 TGas for this function
+// As a safety measure, we will use 5 TGas
+// https://testnet.nearblocks.io/txns/BDURcv5JibwkYVxy53bQQ2eGqNMRpLnoBwyqC8a4aet8#execution
+pub const ON_REFUND_SUCCESS_GAS: Gas = Gas::from_tgas(5);
