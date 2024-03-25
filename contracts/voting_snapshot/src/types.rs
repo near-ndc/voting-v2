@@ -1,18 +1,22 @@
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
-    NearToken,
+    serde::{Deserialize, Serialize},
+    NearSchema, NearToken,
 };
 
 #[derive(
     BorshDeserialize,
     BorshSerialize,
-    serde::Serialize,
-    serde::Deserialize,
+    Deserialize,
+    Serialize,
+    NearSchema,
     Debug,
     PartialEq,
     Clone,
     Copy,
 )]
+#[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 // Status is combination of status and attempt count
 pub enum Status {
     // Loading snapshot data
@@ -47,12 +51,14 @@ pub type VoteWeight = u32;
     Copy,
     BorshSerialize,
     BorshDeserialize,
-    serde::Serialize,
-    serde::Deserialize,
+    Serialize,
+    Deserialize,
     Debug,
     PartialEq,
+    NearSchema,
 )]
 #[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct VoteWeightConfig {
     pub threshold_in_nears: u32,
     pub activity_reward_in_votes: u32,
@@ -63,12 +69,14 @@ pub struct VoteWeightConfig {
     Copy,
     BorshSerialize,
     BorshDeserialize,
-    serde::Serialize,
-    serde::Deserialize,
+    Serialize,
+    Deserialize,
+    NearSchema,
     Debug,
     PartialEq,
 )]
 #[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct SnapshotConfig {
     pub challenge_threshold_in_nears: u32,
     pub challenge_timeout_in_millis: u64,
@@ -76,9 +84,10 @@ pub struct SnapshotConfig {
 }
 
 #[derive(
-    Clone, BorshSerialize, BorshDeserialize, serde::Serialize, serde::Deserialize, Debug, PartialEq,
+    Clone, BorshSerialize, BorshDeserialize, Serialize, Deserialize, NearSchema, Debug, PartialEq,
 )]
 #[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct UserData {
     pub active_months: u32,
     pub stake: NearToken,

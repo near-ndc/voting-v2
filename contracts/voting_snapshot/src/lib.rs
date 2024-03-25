@@ -18,7 +18,7 @@ use storage::StorageKey;
 use types::{SnapshotConfig, Status, UserData, VoteWeightConfig};
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
-mod test_utils;
+pub mod test_utils;
 
 // Define the contract structure
 #[near_bindgen]
@@ -142,6 +142,8 @@ impl Contract {
 
     // Refund after challenge is over
     pub fn refund_bond(&mut self) -> Promise {
+        self.try_move_stage();
+
         require!(
             !matches!(self.status, Status::SnapshotChallenge(_)),
             NOT_ON_SNAPSHOT_CHALLENGE

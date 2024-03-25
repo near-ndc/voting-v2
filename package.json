@@ -7,9 +7,9 @@
     "scripts": {
         "build": "cargo build --target wasm32-unknown-unknown --release",
         "test": "cargo test --release -- --nocapture",
-        "cook": "npm run cookSnapshot",
+        "cook": "npm run cookSnapshotContract",
         "lint": "cargo fmt --all -- --check && cargo clippy -- -D warnings",
-        "cookSnapshot": "cd contracts/voting_snapshot && cargo near build"
+        "cookSnapshotContract": "cd contracts/voting_snapshot && cargo near build"
     },
     "dependencies": {
         "@supercharge/promise-pool": "^2.3.2",

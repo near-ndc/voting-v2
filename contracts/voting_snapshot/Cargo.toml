@@ -12,11 +12,11 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { workspace = true, features = ["unstable"] }
 borsh.workspace = true
-serde.workspace = true
 
 [dev-dependencies]
 near-sdk = { workspace = true, features = ["unit-testing"] }
-# near-workspaces = { workspace = true, features = ["unstable"] }
-# tokio = { workspace = true, features = ["full"] }
-# serde_json.workspace = true
+near-workspaces = { workspace = true, features = ["unstable"] }
+tokio = { workspace = true, features = ["full"] }
+serde_json.workspace = true
 borsh = { workspace = true }
+anyhow.workspace = true

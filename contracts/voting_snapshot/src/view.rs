@@ -1,8 +1,11 @@
-use serde::{Deserialize, Serialize};
+use near_sdk::{
+    serde::{Deserialize, Serialize},
+    NearSchema,
+};
 
 use crate::{types::VoteWeight, *};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(NearSchema, Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(crate = "near_sdk::serde")]
 pub struct VoterInformation {
     pub vote_weight: VoteWeight,
