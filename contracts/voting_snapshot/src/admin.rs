@@ -13,15 +13,15 @@ impl Contract {
 
     #[payable]
     pub fn bulk_load_voters(&mut self, voters: Vec<(AccountId, UserData)>) {
+        let current_storage_usage = env::storage_usage();
+
         self.assert_initialization();
         self.assert_admin();
-
-        let current_storage_usage = env::storage_usage();
 
         self.eligible_voters.extend(voters);
 
         require!(
-            finalize_storage_check(current_storage_usage, env::predecessor_account_id()),
+            finalize_storage_check(current_storage_usage),
             STORAGE_LIMIT_EXCEEDED
         );
     }
@@ -86,14 +86,14 @@ mod tests {
 
     #[test]
     fn create_contract() {
-        let (_context, contract) = setup_ctr(0);
+        let (_context, contract) = setup_ctr();
         assert_eq!(contract.get_vote_config(), default_vote_config());
         assert_eq!(contract.get_admin(), admin());
     }
 
     #[test]
     fn admin_can_change_configs() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let new_vote_config = VoteWeightConfig {
             threshold_in_nears: 200,
             activity_reward_in_votes: 20,
@@ -120,7 +120,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not authorized")]
     fn non_admin_cannot_change_vote_config() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let new_vote_config = VoteWeightConfig {
             threshold_in_nears: 200,
             activity_reward_in_votes: 20,
@@ -135,7 +135,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not authorized")]
     fn non_admin_cannot_change_snapshot_config() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let new_snapshot_config = SnapshotConfig {
             challenge_threshold_in_nears: 200,
             challenge_timeout_in_millis: 200,
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not authorized")]
     fn non_admin_cannot_bulk_load_voters() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let voters = vec![(
             acc(0),
             UserData {
@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn admin_can_bulk_load_voters() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let voters = load_voters();
 
         context.predecessor_account_id = admin();
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Allowed only during initialization phase")]
     fn non_admin_cannot_bulk_load_voters_after_initialization() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let voters = load_voters();
         move_to_challenge(&mut context, &mut contract);
 
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Allowed only during initialization phase")]
     fn non_admin_cannot_change_snapshot_config_after_initialization() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         let new_snapshot_config = SnapshotConfig {
             challenge_threshold_in_nears: 200,
             challenge_timeout_in_millis: 200,
@@ -207,7 +207,7 @@ mod tests {
 
     #[test]
     fn admin_can_restart_to_initialization() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         move_to_challenge(&mut context, &mut contract);
 
         context.predecessor_account_id = admin();
@@ -221,7 +221,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Restart is not allowed")]
     fn admin_cannot_restart_approved_snapshot() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
 

@@ -136,6 +136,7 @@ impl Ctx {
         let res = self
             .account
             .call(self.contract.id(), "refund_bond")
+            .max_gas()
             .transact()
             .await?;
         assert!(res.is_success(), "Failed to refund bond: {:?}", res);

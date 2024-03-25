@@ -84,19 +84,19 @@ mod tests {
 
     #[test]
     fn user_can_get_vote_config() {
-        let (_context, contract) = setup_ctr(0);
+        let (_context, contract) = setup_ctr();
         assert_eq!(contract.get_vote_config(), default_vote_config());
     }
 
     #[test]
     fn user_can_get_admin() {
-        let (_context, contract) = setup_ctr(0);
+        let (_context, contract) = setup_ctr();
         assert_eq!(contract.get_admin(), admin());
     }
 
     #[test]
     fn user_can_get_vote_power() {
-        let (_context, contract) = setup_ctr(0);
+        let (_context, contract) = setup_ctr();
 
         let vote_power = contract.get_vote_power(&acc(1)).unwrap();
         assert_eq!(vote_power, 11);
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn user_can_get_voter_information() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -130,7 +130,7 @@ mod tests {
 
     #[test]
     fn user_can_get_deposit() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
         move_to_challenge(&mut context, &mut contract);
 
         assert_eq!(contract.get_individual_challenge(&acc(0)), None);

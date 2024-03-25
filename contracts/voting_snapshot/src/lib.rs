@@ -3,7 +3,7 @@ use near_sdk::env::{predecessor_account_id, signer_account_id};
 use near_sdk::store::{LookupMap, LookupSet};
 use near_sdk::{
     env, near_bindgen, require, AccountId, NearToken, PanicOnDefault, Promise, PromiseResult,
-    PublicKey,
+    PublicKey, StorageUsage,
 };
 
 pub mod admin;
@@ -91,10 +91,7 @@ impl Contract {
 
         self.voters.insert(signer, env::signer_account_pk());
 
-        require!(
-            finalize_storage_check(storage, predecessor_account_id()),
-            STORAGE_LIMIT_EXCEEDED
-        );
+        require!(finalize_storage_check(storage,), STORAGE_LIMIT_EXCEEDED);
     }
 
     // Can be called indirectly as we parse public key from the input
@@ -109,10 +106,7 @@ impl Contract {
 
         self.voters.insert(user, public_key);
 
-        require!(
-            finalize_storage_check(storage, predecessor_account_id()),
-            STORAGE_LIMIT_EXCEEDED
-        );
+        require!(finalize_storage_check(storage), STORAGE_LIMIT_EXCEEDED);
     }
 
     pub fn register_as_nominee(&mut self) {
@@ -124,10 +118,7 @@ impl Contract {
         self.assert_eligible_voter(&user);
 
         self.nominees.insert(user);
-        require!(
-            finalize_storage_check(storage, predecessor_account_id()),
-            STORAGE_LIMIT_EXCEEDED
-        );
+        require!(finalize_storage_check(storage), STORAGE_LIMIT_EXCEEDED);
     }
 
     // Anybody should be able to challenge the snapshot
@@ -243,20 +234,37 @@ impl Contract {
     }
 }
 
-fn finalize_storage_check(storage_start: u64, user: AccountId) -> bool {
-    let storage_deposit = env::attached_deposit();
-    let required_deposit = (env::storage_usage() as u128)
-        .saturating_sub(storage_start as u128)
-        .saturating_mul(env::storage_byte_cost().as_yoctonear());
+fn finalize_storage_check(storage_start: StorageUsage) -> bool {
+    let user_deposit = env::attached_deposit();
+    let storage_used = env::storage_usage().saturating_sub(storage_start);
+    let diff = env::storage_byte_cost()
+        .checked_mul(storage_used as u128)
+        .and_then(|cost| user_deposit.checked_sub(cost));
+    env::log_str(&format!(
+        "Storage start: {}, Storage usage: {} Storage used: {}, user_deposit: {}, diff: {:?}",
+        storage_start,
+        env::storage_usage(),
+        storage_used,
+        user_deposit,
+        diff
+    ));
+    println!(
+        "Storage start: {}, Storage usage: {} Storage used: {}, user_deposit: {}, diff: {:?}",
+        storage_start,
+        env::storage_usage(),
+        storage_used,
+        user_deposit,
+        diff
+    );
 
-    if storage_deposit.as_yoctonear() < required_deposit {
-        return false;
+    if let Some(diff) = diff {
+        if diff.as_yoctonear() > 0 {
+            Promise::new(env::predecessor_account_id()).transfer(diff);
+        }
+        true
+    } else {
+        false
     }
-    let diff = storage_deposit.as_yoctonear() - required_deposit;
-    if diff > 0 {
-        Promise::new(user).transfer(NearToken::from_yoctonear(diff));
-    }
-    true
 }
 
 #[cfg(test)]
@@ -269,7 +277,7 @@ mod tests {
 
     #[test]
     fn eligible_user_can_register_as_voter() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -287,7 +295,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not eligible voter")]
     fn non_eligible_user_cannot_register_as_voter() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -303,7 +311,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Should be called directly")]
     fn register_as_voter_should_be_called_directly() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -318,7 +326,7 @@ mod tests {
 
     #[test]
     fn eligible_user_can_register_as_voter_with_pubkey() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -334,7 +342,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not eligible voter")]
     fn non_eligible_user_cannot_register_as_voter_with_pubkey() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -347,7 +355,7 @@ mod tests {
 
     #[test]
     fn user_can_change_pubkey() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -377,13 +385,13 @@ mod tests {
 
     #[test]
     fn user_can_register_as_nominee() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
 
         context.predecessor_account_id = acc(1);
-        context.attached_deposit = NearToken::from_millinear(10);
+        context.attached_deposit = NearToken::from_millinear(1);
         testing_env!(context.clone());
 
         contract.register_as_nominee();
@@ -394,7 +402,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not eligible voter")]
     fn non_eligible_user_cannot_register_as_nominee() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -408,7 +416,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Allowed only during registration phase")]
     fn user_cannot_register_as_nominee_after_registration() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -423,7 +431,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Allowed only during registration phase")]
     fn user_cannot_register_as_voter_after_registration() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -438,7 +446,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Allowed only during registration phase")]
     fn user_cannot_register_as_voter_before_registration() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
 
@@ -453,7 +461,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Allowed only during registration phase")]
     fn user_cannot_register_as_nominee_before_registration() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
 
@@ -466,7 +474,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Not allowed on snapshot challenge phase")]
     fn user_can_challenge_snapshot_but_cannot_retrieve_money_before_challenge_ends() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
 
@@ -487,7 +495,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "No deposit found for the user")]
     fn wrong_user_cannot_refund() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
         move_to_registration(&mut context, &mut contract);
@@ -500,7 +508,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "Expected deposit greater than 1 milli NEAR")]
     fn user_cannot_challenge_snapshot_without_deposit() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
 
@@ -512,7 +520,7 @@ mod tests {
 
     #[test]
     fn user_can_halt_snapshot_and_retrieve_funds() {
-        let (mut context, mut contract) = setup_ctr(0);
+        let (mut context, mut contract) = setup_ctr();
 
         move_to_challenge(&mut context, &mut contract);
 

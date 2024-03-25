@@ -119,12 +119,11 @@ pub fn load_voters() -> Vec<(AccountId, UserData)> {
     ]
 }
 
-pub fn setup_ctr(attach_deposit: u128) -> (VMContext, Contract) {
+pub fn setup_ctr() -> (VMContext, Contract) {
     let mut context = VMContextBuilder::new().build();
 
     let mut contract = Contract::new(admin(), default_vote_config(), default_snapshot_config());
     context.predecessor_account_id = admin();
-    context.attached_deposit = NearToken::from_millinear(attach_deposit);
 
     testing_env!(context.clone());
 
