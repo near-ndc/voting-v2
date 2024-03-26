@@ -7,8 +7,8 @@
     "scripts": {
         "build": "cargo build --target wasm32-unknown-unknown --release",
         "test": "cargo test --release -- --nocapture",
-        "cook": "npm run cookSnapshotContract",
         "lint": "cargo fmt --all -- --check && cargo clippy -- -D warnings",
+        "cook": "npm run cookSnapshotContract",
         "cookSnapshotContract": "cd contracts/voting_snapshot && cargo near build"
     },
     "dependencies": {
