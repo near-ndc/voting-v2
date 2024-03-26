@@ -36,6 +36,9 @@ jobs:
       - name: Install wasm32 toolchain
         if: env.GIT_DIFF
         run: rustup target add wasm32-unknown-unknown
+      - name: Install near cli and cargo near
+        if: env.GIT_DIFF
+        run: npm i
       - name: Build
         if: env.GIT_DIFF
         run: npm run cook
