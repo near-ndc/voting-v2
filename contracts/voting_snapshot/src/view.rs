@@ -14,51 +14,67 @@ pub struct VoterInformation {
 
 #[near_bindgen]
 impl Contract {
+    /// *View*: Returns the vote weight configuration
     pub fn get_vote_config(&self) -> VoteWeightConfig {
         self.vote_config
     }
 
+    /// *View*: Returns the snapshot configuration (Time for challenge, registration, threshold for challenge)
     pub fn get_process_config(&self) -> SnapshotConfig {
         self.process_config
     }
 
+    /// *View*: Returns the end time of the current phase in milliseconds.
+    ///
+    /// Only applicable for challenge and registration phase
     pub fn get_end_time(&self) -> u64 {
         self.end_time_in_millis
     }
 
+    /// *View*: Returns the current phase of the snapshot
     pub fn get_status(&self) -> Status {
         self.status
     }
 
+    /// *View*: Return the total amount of NEAR tokens challenged in the current iteration
     pub fn get_total_challenge(&self) -> NearToken {
         self.total_challenged
     }
 
+    /// *View*: Returns the individual challenge amount for a given challenger
+    ///
+    /// Returns None if the challenger has not challenged or the challenger already withdrew the deposit
     pub fn get_individual_challenge(&self, challenger: &AccountId) -> Option<NearToken> {
         self.challengers.get(challenger).cloned()
     }
 
+    /// *View*: Returns admin account ID
     pub fn get_admin(&self) -> AccountId {
         self.admin.clone()
     }
 
+    /// *View*: Returns the vote power of a individual voter
     pub fn get_vote_power(&self, voter: &AccountId) -> Option<VoteWeight> {
         let voter_info = self.eligible_voters.get(voter)?;
         Some(voter_info.vote_weight(self.vote_config))
     }
 
+    /// *View*: Returns if the given account ID submitted public key and became a voter
     pub fn is_voter(&self, voter: &AccountId) -> bool {
         self.voters.contains_key(voter)
     }
 
+    /// *View*: Returns if the given account ID is a nominee
     pub fn is_nominee(&self, nominee: &AccountId) -> bool {
         self.nominees.contains(nominee)
     }
 
+    /// *View*: Returns if the given account ID is able to become a voter or a nominee
     pub fn is_eligible_voter(&self, voter: &AccountId) -> bool {
         self.eligible_voters.contains_key(voter)
     }
 
+    /// *View*: Returns vote weight and public key of a voter
     pub fn get_voter_information(&self, voter: &AccountId) -> Option<VoterInformation> {
         self.voters.get(voter).and_then(|public_key| {
             self.get_vote_power(voter).map(|weight| VoterInformation {
@@ -68,6 +84,7 @@ impl Contract {
         })
     }
 
+    /// *View*: Returns vote weight and public key of a list of voters
     pub fn get_voters_info(&self, voters: Vec<AccountId>) -> Vec<(AccountId, VoterInformation)> {
         voters
             .into_iter()

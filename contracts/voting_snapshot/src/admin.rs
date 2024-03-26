@@ -5,6 +5,11 @@ use common_contracts::finalize_storage_check;
 
 #[near_bindgen]
 impl Contract {
+    /// *Transaction*: Sets the vote weight configuration
+    ///
+    /// Requirements:
+    /// - Only admin can set this
+    /// - Can be set only during initialization phase
     pub fn set_vote_config(&mut self, vote_config: VoteWeightConfig) {
         self.assert_initialization();
         self.assert_admin();
@@ -12,6 +17,12 @@ impl Contract {
         self.vote_config = vote_config;
     }
 
+    /// *Transaction*: Bulk load voters
+    ///
+    /// Requirements:
+    /// - Only admin can bulk load voters
+    /// - Can be done only during initialization phase
+    /// - The admin should pay for the extra storage
     #[payable]
     pub fn bulk_load_voters(&mut self, voters: Vec<(AccountId, UserData)>) {
         let current_storage_usage = env::storage_usage();
@@ -28,6 +39,11 @@ impl Contract {
         );
     }
 
+    /// *Transaction*: Sets the snapshot configuration
+    ///
+    /// Requirements:
+    /// - Only admin can set this
+    /// - Can be set only during initialization phase
     pub fn set_snapshot_config(&mut self, process_config: SnapshotConfig) {
         self.assert_initialization();
         self.assert_admin();
@@ -35,6 +51,11 @@ impl Contract {
         self.process_config = process_config;
     }
 
+    /// *Transaction*: Starts the snapshot challenge phase once the snapshot is initialized
+    ///
+    /// Requirements:
+    /// - Only admin can start the challenge
+    /// - Can be started only during initialization phase
     pub fn start_challenge(&mut self) {
         self.assert_initialization();
         self.assert_admin();
@@ -44,6 +65,11 @@ impl Contract {
         emit_phase_change(self.status);
     }
 
+    /// *Transaction*: Restarts the process to the initialization phase in case of snapshot issues
+    ///
+    /// Requirements:
+    /// - Only admin can restart the process
+    /// - Can be restarted only during SnapshotChallenge or SnapshotHalted phase
     pub fn restart_to_initialization(&mut self) {
         // Admin can restart the process before the snapshot is halted
         // If some critical issues are found

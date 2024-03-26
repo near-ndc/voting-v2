@@ -59,6 +59,7 @@ pub struct Contract {
 // Implement the contract structure
 #[near_bindgen]
 impl Contract {
+    /// Initializes the contract with the given admin and configs
     #[init]
     pub fn new(
         admin: AccountId,
@@ -81,8 +82,14 @@ impl Contract {
         }
     }
 
-    // Should be called directly as we parse public key from the signer
-    // As a result, we need to make sure that the signer is the predecessor
+    /// *Transaction*: Registers the user as a voter
+    ///
+    /// Requirements:
+    /// - The contract should be in the registration phase
+    /// - User should be eligible
+    /// - User should not be registered before
+    /// - User should pay for storage including the snapshot record cost
+    /// - User should call directly as we parse signer public key from the input
     #[payable]
     pub fn register_as_voter(&mut self) {
         let storage = env::storage_usage();
@@ -104,7 +111,13 @@ impl Contract {
         );
     }
 
-    // Can be called indirectly as we parse public key from the input
+    /// *Transaction*: Registers the user as a voter with the given public key
+    ///
+    /// Requirements:
+    /// - The contract should be in the registration phase
+    /// - User should be eligible
+    /// - User should not be registered before
+    /// - User should pay for storage including the snapshot record cost
     #[payable]
     pub fn register_as_voter_with_pubkey(&mut self, public_key: PublicKey) {
         let storage = env::storage_usage();
@@ -125,6 +138,10 @@ impl Contract {
         );
     }
 
+    /// *Transaction*: Changes the public key of the user
+    ///
+    /// Requirements:
+    /// - User should be registered
     pub fn change_public_key(&mut self, public_key: PublicKey) {
         let user = env::predecessor_account_id();
         require!(self.voters.contains_key(&user), NOT_REGISTERED);
@@ -132,6 +149,13 @@ impl Contract {
         self.voters.set(user, Some(public_key));
     }
 
+    /// *Transaction*: Registers the user as a nominee
+    ///
+    /// Requirements:
+    /// - The contract should be in the registration phase
+    /// - User should be eligible
+    /// - User should not be registered before
+    /// - User should pay for storage
     pub fn register_as_nominee(&mut self) {
         let storage = env::storage_usage();
 
@@ -149,7 +173,11 @@ impl Contract {
         );
     }
 
-    // Anybody should be able to challenge the snapshot
+    /// *Transaction*: Any user can challenge the snapshot. User can deposit NEAR several times
+    ///
+    /// Requirements:
+    /// - The contract should be in the snapshot challenge phase
+    /// - User should deposit more than 1 milli NEAR
     #[payable]
     pub fn challenge_snapshot(&mut self) {
         self.try_move_stage();
@@ -182,7 +210,11 @@ impl Contract {
         self.try_halt();
     }
 
-    // Refund after challenge is over
+    /// *Transaction*: Refunds the challenge deposit to the user
+    ///
+    /// Requirements:
+    /// - The contract should not be in the snapshot challenge phase
+    /// - User should have a deposit
     pub fn refund_bond(&mut self) -> Promise {
         self.try_move_stage();
 
@@ -205,6 +237,9 @@ impl Contract {
         }
     }
 
+    /// *Callback*: Callback function to handle the refund success
+    ///
+    /// Private function
     #[private]
     pub fn on_refund_success(&mut self, account_id: AccountId) {
         require!(env::promise_results_count() == 1, EXPECTED_PROMISE_RESULT);
@@ -218,6 +253,7 @@ impl Contract {
         }
     }
 
+    /// *Transaction*: Tries to move the status to the next phase
     pub fn try_move_stage(&mut self) {
         let should_move = env::block_timestamp_ms() >= self.end_time_in_millis;
 
