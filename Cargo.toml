@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/voting_snapshot"]
+members = ["contracts/voting_snapshot", "common"]
 resolver = "2"
 
 [profile.release]
@@ -27,3 +27,5 @@ serde_json = "1"
 num-integer = "0.1"
 borsh = "1.0"
 anyhow = "1.0"
+
+common-contracts = { path = "common" }

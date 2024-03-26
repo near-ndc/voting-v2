@@ -1,6 +1,7 @@
 use near_sdk::env;
 
-use crate::{consts::*, *};
+use crate::{consts::*, events::emit_phase_change, *};
+use common_contracts::finalize_storage_check;
 
 #[near_bindgen]
 impl Contract {
@@ -20,8 +21,9 @@ impl Contract {
 
         self.eligible_voters.extend(voters);
 
+        self.eligible_voters.flush();
         require!(
-            finalize_storage_check(current_storage_usage),
+            finalize_storage_check(current_storage_usage, 0),
             STORAGE_LIMIT_EXCEEDED
         );
     }
@@ -39,6 +41,7 @@ impl Contract {
         self.status = Status::SnapshotChallenge(self.status.attempt());
         self.end_time_in_millis =
             env::block_timestamp_ms() + self.process_config.challenge_timeout_in_millis;
+        emit_phase_change(self.status);
     }
 
     pub fn restart_to_initialization(&mut self) {
@@ -58,6 +61,7 @@ impl Contract {
         // Though, we preserve the individual challenged amounts,
         // so user can return all the funds in the end
         self.total_challenged = NearToken::from_yoctonear(0);
+        emit_phase_change(self.status);
 
         // Now admin can bulk load data again and start the process
         // once issues are resolved
@@ -173,6 +177,7 @@ mod tests {
         let voters = load_voters();
 
         context.predecessor_account_id = admin();
+        context.attached_deposit = NearToken::from_millinear(10);
         testing_env!(context.clone());
         assert!(!contract.is_eligible_voter(&voters[0].0));
 

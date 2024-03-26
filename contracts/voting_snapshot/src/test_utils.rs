@@ -124,6 +124,7 @@ pub fn setup_ctr() -> (VMContext, Contract) {
 
     let mut contract = Contract::new(admin(), default_vote_config(), default_snapshot_config());
     context.predecessor_account_id = admin();
+    context.attached_deposit = NearToken::from_millinear(5);
 
     testing_env!(context.clone());
 

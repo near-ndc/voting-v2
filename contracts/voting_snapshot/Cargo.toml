@@ -1,7 +1,8 @@
 [package]
 name = "voting_snapshot"
 description = "Allows user to register to participate in the voting. Stores voting power of each individual user"
-version = "0.1.0"
+authors.workspace = true
+version.workspace = true
 edition.workspace = true
 repository.workspace = true
 license.workspace = true
@@ -21,12 +22,10 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 near-sdk = { workspace = true, features = ["unstable"] }
-borsh.workspace = true
+common-contracts.workspace = true
 
 [dev-dependencies]
 near-sdk = { workspace = true, features = ["unit-testing"] }
 near-workspaces = { workspace = true, features = ["unstable"] }
 tokio = { workspace = true, features = ["full"] }
-serde_json.workspace = true
-borsh = { workspace = true }
 anyhow.workspace = true

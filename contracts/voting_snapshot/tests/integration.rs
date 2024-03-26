@@ -1,6 +1,7 @@
+use near_sdk::serde_json;
+use near_sdk::serde_json::json;
 use near_sdk::NearToken;
 use near_workspaces::{network::Sandbox, Account, AccountId, Contract, DevNetwork, Worker};
-use serde_json::json;
 use voting_snapshot::types::{SnapshotConfig, Status, UserData, VoteWeightConfig};
 
 pub fn default_vote_config() -> VoteWeightConfig {
@@ -85,6 +86,7 @@ impl Ctx {
             .call(self.contract.id(), "bulk_load_voters")
             .args_json(json!({ "voters": input }))
             .max_gas()
+            .deposit(NearToken::from_millinear(100))
             .transact()
             .await?;
         assert!(res.is_success(), "Failed to add snapshot data: {:?}", res);

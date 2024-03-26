@@ -1,18 +1,21 @@
+use events::emit_phase_change;
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::env::{predecessor_account_id, signer_account_id};
 use near_sdk::store::{LookupMap, LookupSet};
 use near_sdk::{
     env, near_bindgen, require, AccountId, NearToken, PanicOnDefault, Promise, PromiseResult,
-    PublicKey, StorageUsage,
+    PublicKey,
 };
 
 pub mod admin;
 pub mod consts;
+pub mod events;
 pub mod ext;
 pub mod storage;
 pub mod types;
 pub mod view;
 
+use common_contracts::finalize_storage_check;
 use consts::*;
 use storage::StorageKey;
 use types::{SnapshotConfig, Status, UserData, VoteWeightConfig};
@@ -62,9 +65,11 @@ impl Contract {
         vote_config: VoteWeightConfig,
         process_config: SnapshotConfig,
     ) -> Self {
+        let status = Status::Initialization(0);
+        emit_phase_change(status);
         Self {
             admin,
-            status: Status::Initialization(0),
+            status,
             process_config,
             vote_config,
             end_time_in_millis: 0,
@@ -84,6 +89,7 @@ impl Contract {
 
         let signer = signer_account_id();
         require!(signer == predecessor_account_id(), DIRECT_CALL);
+        require!(!self.voters.contains_key(&signer), ALREADY_REGISTERED);
 
         self.try_move_stage();
 
@@ -91,7 +97,11 @@ impl Contract {
 
         self.voters.insert(signer, env::signer_account_pk());
 
-        require!(finalize_storage_check(storage,), STORAGE_LIMIT_EXCEEDED);
+        self.voters.flush();
+        require!(
+            finalize_storage_check(storage, SNAPSHOT_RECORD_COST),
+            STORAGE_LIMIT_EXCEEDED
+        );
     }
 
     // Can be called indirectly as we parse public key from the input
@@ -103,10 +113,23 @@ impl Contract {
 
         let user = env::predecessor_account_id();
         self.assert_eligible_voter(&user);
+        require!(!self.voters.contains_key(&user), ALREADY_REGISTERED);
 
         self.voters.insert(user, public_key);
 
-        require!(finalize_storage_check(storage), STORAGE_LIMIT_EXCEEDED);
+        self.voters.flush();
+
+        require!(
+            finalize_storage_check(storage, SNAPSHOT_RECORD_COST),
+            STORAGE_LIMIT_EXCEEDED
+        );
+    }
+
+    pub fn change_public_key(&mut self, public_key: PublicKey) {
+        let user = env::predecessor_account_id();
+        require!(self.voters.contains_key(&user), NOT_REGISTERED);
+
+        self.voters.set(user, Some(public_key));
     }
 
     pub fn register_as_nominee(&mut self) {
@@ -116,9 +139,14 @@ impl Contract {
 
         let user = env::predecessor_account_id();
         self.assert_eligible_voter(&user);
+        require!(!self.nominees.contains(&user), ALREADY_REGISTERED);
 
         self.nominees.insert(user);
-        require!(finalize_storage_check(storage), STORAGE_LIMIT_EXCEEDED);
+
+        require!(
+            finalize_storage_check(storage, SNAPSHOT_RECORD_COST),
+            STORAGE_LIMIT_EXCEEDED
+        );
     }
 
     // Anybody should be able to challenge the snapshot
@@ -198,12 +226,15 @@ impl Contract {
                 // Last try to halt
                 if !self.try_halt() {
                     self.status = Status::Registration(attempt);
+
                     // We don't use block_timestamp_ms() here to have strict timings
                     self.end_time_in_millis += self.process_config.registration_timeout_in_millis;
+                    emit_phase_change(self.status);
                 }
             }
             Status::Registration(attempt) if should_move => {
                 self.status = Status::RegistrationEnded(attempt);
+                emit_phase_change(self.status);
             }
             // Explicitly write all cases to fail on new status
             Status::Initialization(_)
@@ -227,43 +258,11 @@ impl Contract {
             >= self.process_config.challenge_threshold_in_nears as u128
         {
             self.status = Status::SnapshotHalted(self.status.attempt());
+            emit_phase_change(self.status);
             true
         } else {
             false
         }
-    }
-}
-
-fn finalize_storage_check(storage_start: StorageUsage) -> bool {
-    let user_deposit = env::attached_deposit();
-    let storage_used = env::storage_usage().saturating_sub(storage_start);
-    let diff = env::storage_byte_cost()
-        .checked_mul(storage_used as u128)
-        .and_then(|cost| user_deposit.checked_sub(cost));
-    env::log_str(&format!(
-        "Storage start: {}, Storage usage: {} Storage used: {}, user_deposit: {}, diff: {:?}",
-        storage_start,
-        env::storage_usage(),
-        storage_used,
-        user_deposit,
-        diff
-    ));
-    println!(
-        "Storage start: {}, Storage usage: {} Storage used: {}, user_deposit: {}, diff: {:?}",
-        storage_start,
-        env::storage_usage(),
-        storage_used,
-        user_deposit,
-        diff
-    );
-
-    if let Some(diff) = diff {
-        if diff.as_yoctonear() > 0 {
-            Promise::new(env::predecessor_account_id()).transfer(diff);
-        }
-        true
-    } else {
-        false
     }
 }
 
@@ -290,6 +289,53 @@ mod tests {
         contract.register_as_voter();
 
         assert!(contract.is_voter(&acc(1)));
+    }
+
+    #[test]
+    #[should_panic(expected = "Deposit is not enough to cover storage usage")]
+    fn user_should_pay_for_storage_to_become_voter() {
+        let (mut context, mut contract) = setup_ctr();
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
+        context.signer_account_id = acc(1);
+        context.predecessor_account_id = acc(1);
+        context.signer_account_pk = pk();
+        context.attached_deposit = NearToken::from_yoctonear(0);
+        testing_env!(context.clone());
+
+        contract.register_as_voter();
+    }
+
+    #[test]
+    #[should_panic(expected = "Deposit is not enough to cover storage usage")]
+    fn user_should_pay_for_storage_to_become_voter2() {
+        let (mut context, mut contract) = setup_ctr();
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(1);
+        context.attached_deposit = NearToken::from_yoctonear(0);
+        testing_env!(context.clone());
+
+        contract.register_as_voter_with_pubkey(pk());
+    }
+
+    #[test]
+    #[should_panic(expected = "Deposit is not enough to cover storage usage")]
+    fn user_should_pay_for_storage_to_become_nominee() {
+        let (mut context, mut contract) = setup_ctr();
+
+        move_to_challenge(&mut context, &mut contract);
+        move_to_registration(&mut context, &mut contract);
+
+        context.predecessor_account_id = acc(1);
+        context.attached_deposit = NearToken::from_yoctonear(0);
+        testing_env!(context.clone());
+
+        contract.register_as_nominee();
     }
 
     #[test]
@@ -375,7 +421,7 @@ mod tests {
         let another_pk =
             PublicKey::from_str("ed25519:XSCka9nSaKt1xhtXumnpSPvJmLAEjSHgiTC5kQGo5Xv").unwrap();
 
-        contract.register_as_voter_with_pubkey(another_pk.clone());
+        contract.change_public_key(another_pk.clone());
 
         assert_eq!(
             contract.get_voter_information(&acc(1)).unwrap().public_key,
@@ -391,7 +437,6 @@ mod tests {
         move_to_registration(&mut context, &mut contract);
 
         context.predecessor_account_id = acc(1);
-        context.attached_deposit = NearToken::from_millinear(1);
         testing_env!(context.clone());
 
         contract.register_as_nominee();
@@ -513,6 +558,7 @@ mod tests {
         move_to_challenge(&mut context, &mut contract);
 
         context.predecessor_account_id = acc(0);
+        context.attached_deposit = NearToken::from_millinear(0);
         testing_env!(context.clone());
 
         contract.challenge_snapshot();

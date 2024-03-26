@@ -42,6 +42,16 @@ impl Status {
             Status::RegistrationEnded(attempt) => *attempt,
         }
     }
+
+    pub fn event_info(&self) -> (u32, &'static str) {
+        match self {
+            Status::Initialization(attempt) => (*attempt, "Initialization"),
+            Status::SnapshotChallenge(attempt) => (*attempt, "SnapshotChallenge"),
+            Status::SnapshotHalted(attempt) => (*attempt, "SnapshotHalted"),
+            Status::Registration(attempt) => (*attempt, "Registration"),
+            Status::RegistrationEnded(attempt) => (*attempt, "RegistrationEnded"),
+        }
+    }
 }
 
 pub type VoteWeight = u32;
