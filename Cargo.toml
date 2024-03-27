@@ -1,5 +1,5 @@
 [workspace]
-members = ["contracts/voting_snapshot", "common"]
+members = ["contracts/voting_snapshot", "contracts/secret_contract", "common"]
 resolver = "2"
 
 [profile.release]
@@ -20,12 +20,26 @@ repository = "https://github.com/near-ndc/voting-v2"
 license = "Mozilla Public License 2.0"
 
 [workspace.dependencies]
+# Near ecosystem
 near-sdk = "5.0.0"
 near-workspaces = { version = "0.10.0", features = ["unstable"] }
-tokio = { version = "1.12.0", features = ["full"] }
-serde_json = "1"
-num-integer = "0.1"
 borsh = "1.0"
+
+# Secret ecosystem
+cosmwasm-std = { package = "secret-cosmwasm-std", version = "1.1.11" }
+cosmwasm-storage = { package = "secret-cosmwasm-storage", version = "1.1.11" }
+secret-toolkit-storage = "0.10.0"
+cosmwasm-schema = "1.0.0"
+
+# General
+serde_json = "1"
+tokio = { version = "1.12.0", features = ["full"] }
 anyhow = "1.0"
+schemars = { version = "0.8.11" }
+serde = { version = "1.0" }
+thiserror = { version = "1.0" }
+
+# crypto 
+secp256k1 = "0.28"
 
 common-contracts = { path = "common" }

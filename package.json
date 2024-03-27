@@ -7,9 +7,10 @@
     "scripts": {
         "build": "cargo build --target wasm32-unknown-unknown --release",
         "test": "cargo test --release -- --nocapture",
-        "lint": "cargo fmt --all -- --check && cargo clippy -- -D warnings",
-        "cook": "npm run cookSnapshotContract",
-        "cookSnapshotContract": "cd contracts/voting_snapshot && cargo near build"
+        "lint": "cargo fmt --all -- --check && cargo clippy --release -- -D warnings",
+        "cook": "npm run cookSnapshotContract && npm run cookSecret",
+        "cookSnapshotContract": "cd contracts/voting_snapshot && cargo near build",
+        "cookSecret": "cd contracts/secret_contract && make build-mainnet"
     },
     "dependencies": {
         "@supercharge/promise-pool": "^2.3.2",
@@ -18,7 +19,10 @@
         "fs": "^0.0.1security",
         "near-api-js": "3.0.4",
         "p-retry": "^6.2.0",
-        "pg": "^8.11.3"
+        "pg": "^8.11.3",
+        "dotenv": "^16.3.1",
+        "secp256k1": "^5.0.0",
+        "secretjs": "^1.12.0"
     },
     "devDependencies": {
         "near-cli-rs": "^0.8.1",
