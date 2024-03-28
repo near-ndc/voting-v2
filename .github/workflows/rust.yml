@@ -48,3 +48,18 @@ jobs:
       - name: Run tests
         if: env.GIT_DIFF
         run: npm run test
+      - uses: actions/upload-artifact@v4
+        if: env.GIT_DIFF
+        with:
+          name: secret-network-contract.tar.gz
+          path: contracts/secret_contract/contract.wasm.gz
+          if-no-files-found: error
+          overwrite: true
+      - uses: actions/upload-artifact@v4
+        if: env.GIT_DIFF
+        with:
+          name: snapshot-contract
+          path: target/near/voting_snapshot/*
+          if-no-files-found: error
+          overwrite: true
+
