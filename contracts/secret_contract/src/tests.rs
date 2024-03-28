@@ -3,6 +3,7 @@ use cosmwasm_std::{testing::*, Timestamp};
 use secp256k1::{PublicKey, Secp256k1};
 
 use crate::contract::{instantiate, query};
+use crate::error::ContractError;
 use crate::msg::{InstantiateMsg, KeysResponse, QueryMsg};
 
 fn setup_contract(
@@ -44,6 +45,43 @@ fn proper_initialization() {
 }
 
 #[test]
+fn user_cant_reinitialize() {
+    let time = Timestamp::from_seconds(500);
+    let mut mock_env = mock_env();
+
+    mock_env.block.time = time.minus_seconds(5);
+
+    let mut deps = setup_contract(time, mock_env.clone());
+
+    let info = mock_info(
+        "creator",
+        &[Coin {
+            denom: "earth".to_string(),
+            amount: Uint128::new(1000),
+        }],
+    );
+
+    let res = query(deps.as_ref(), mock_env.clone(), QueryMsg::GetKeys {}).unwrap();
+    let init: KeysResponse = from_binary(&res).unwrap();
+
+    assert_eq!(
+        instantiate(
+            deps.as_mut(),
+            mock_env.clone(),
+            info,
+            InstantiateMsg {
+                end_time: time.plus_seconds(10),
+            },
+        ),
+        Err(ContractError::AlreadyInitialized)
+    );
+    let res = query(deps.as_ref(), mock_env, QueryMsg::GetKeys {}).unwrap();
+    let upd: KeysResponse = from_binary(&res).unwrap();
+
+    assert_eq!(init, upd);
+}
+
+#[test]
 fn invalid_time_is_failure() {
     let time = Timestamp::from_seconds(500);
     let mut deps = mock_dependencies();
@@ -60,7 +98,10 @@ fn invalid_time_is_failure() {
 
     let init_msg = InstantiateMsg { end_time: time };
 
-    instantiate(deps.as_mut(), mock_env, info, init_msg).expect_err("Should fail");
+    assert_eq!(
+        instantiate(deps.as_mut(), mock_env, info, init_msg),
+        Err(ContractError::InvalidEndTime)
+    );
 }
 
 #[test]
@@ -90,5 +131,16 @@ fn secret_revealed_after_time_pass() {
     assert_eq!(
         inherited_public,
         PublicKey::from_slice(&value.public).unwrap()
+    );
+}
+
+#[test]
+fn cannot_fetch_uninitialized_contract() {
+    let deps = mock_dependencies();
+    let mock_env = mock_env();
+
+    assert_eq!(
+        query(deps.as_ref(), mock_env, QueryMsg::GetKeys {}),
+        Err(ContractError::NotInitialized)
     );
 }

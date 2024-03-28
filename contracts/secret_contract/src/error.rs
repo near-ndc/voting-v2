@@ -8,4 +8,10 @@ pub enum ContractError {
 
     #[error("Invalid End Time")]
     InvalidEndTime,
+
+    #[error("Already initialized")]
+    AlreadyInitialized,
+
+    #[error("Not initialized yet")]
+    NotInitialized,
 }
