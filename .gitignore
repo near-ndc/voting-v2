@@ -17,3 +17,6 @@ private-*
 data
 
 node_modules
+
+stake*
+snapshot*

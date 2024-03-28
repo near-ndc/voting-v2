@@ -1,0 +1,31 @@
+[package]
+name = "voting_snapshot"
+description = "Allows user to register to participate in the voting. Stores voting power of each individual user"
+authors.workspace = true
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[profile.release]
+codegen-units = 1
+# Tell `rustc` to optimize for small code size.
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+# Opt into extra safety checks on arithmetic operations https://stackoverflow.com/a/64136471/249801
+overflow-checks = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true, features = ["unstable"] }
+common-contracts.workspace = true
+
+[dev-dependencies]
+near-sdk = { workspace = true, features = ["unit-testing"] }
+near-workspaces = { workspace = true, features = ["unstable"] }
+tokio = { workspace = true, features = ["full"] }
+anyhow.workspace = true

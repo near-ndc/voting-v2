@@ -4,7 +4,13 @@
     "version": "0.0.1",
     "license": "(MIT AND Apache-2.0)",
     "type": "module",
-    "scripts": {},
+    "scripts": {
+        "build": "cargo build --target wasm32-unknown-unknown --release",
+        "test": "cargo test --release -- --nocapture",
+        "lint": "cargo fmt --all -- --check && cargo clippy -- -D warnings",
+        "cook": "npm run cookSnapshotContract",
+        "cookSnapshotContract": "cd contracts/voting_snapshot && cargo near build"
+    },
     "dependencies": {
         "@supercharge/promise-pool": "^2.3.2",
         "big.js": "^6.1.1",
@@ -13,5 +19,9 @@
         "near-api-js": "3.0.4",
         "p-retry": "^6.2.0",
         "pg": "^8.11.3"
+    },
+    "devDependencies": {
+        "near-cli-rs": "^0.8.1",
+        "cargo-near": "^0.6.1"
     }
 }
