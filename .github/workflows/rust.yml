@@ -34,6 +34,8 @@ jobs:
       - name: Install wasm32 toolchain
         if: env.GIT_DIFF
         run: rustup target add wasm32-unknown-unknown
+      - name: Install binaryen
+        run: sudo apt-get install -y binaryen
       - name: Install near cli and cargo near
         if: env.GIT_DIFF
         run: npm i
