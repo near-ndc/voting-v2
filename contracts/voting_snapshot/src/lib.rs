@@ -39,12 +39,15 @@ pub struct Contract {
     // for full snapshot, please refer to the IPFS storage
     // Will be cleaned on halt.
     eligible_voters: LookupMap<AccountId, UserData>,
+    total_eligible_users: u32,
 
     // We need to collect the ones who want to participate in the vote process
     // We collect the public key of the voter to verify the signature
     // in the encoded message.
     // Also, this user indicates that he/she accepts conduct of fair voting
     voters: LookupMap<AccountId, PublicKey>,
+    total_voters: u32,
+
     nominees: LookupSet<AccountId>,
 
     // People can deposit NEAR to challenge snapshot
@@ -74,6 +77,8 @@ impl Contract {
             process_config,
             vote_config,
             end_time_in_millis: 0,
+            total_voters: 0,
+            total_eligible_users: 0,
             eligible_voters: LookupMap::new(StorageKey::EligibleVoters),
             voters: LookupMap::new(StorageKey::Voters),
             nominees: LookupSet::new(StorageKey::Nominees),
@@ -103,6 +108,7 @@ impl Contract {
         self.assert_eligible_voter(&signer);
 
         self.voters.insert(signer, env::signer_account_pk());
+        self.total_voters += 1;
 
         self.voters.flush();
         require!(
@@ -129,6 +135,7 @@ impl Contract {
         require!(!self.voters.contains_key(&user), ALREADY_REGISTERED);
 
         self.voters.insert(user, public_key);
+        self.total_voters += 1;
 
         self.voters.flush();
 

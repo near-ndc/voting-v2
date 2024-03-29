@@ -30,7 +30,13 @@ impl Contract {
         self.assert_initialization();
         self.assert_admin();
 
-        self.eligible_voters.extend(voters);
+        let mut new_accounts = 0;
+        for (key, value) in voters.into_iter() {
+            if self.eligible_voters.insert(key, value).is_none() {
+                new_accounts += 1;
+            }
+        }
+        self.total_eligible_users += new_accounts;
 
         self.eligible_voters.flush();
         require!(
@@ -210,6 +216,8 @@ mod tests {
         contract.bulk_load_voters(voters.clone());
 
         assert!(contract.is_eligible_voter(&voters[0].0));
+
+        assert_eq!(contract.get_total_eligible_users(), 4);
     }
 
     #[test]

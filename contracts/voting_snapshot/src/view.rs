@@ -91,6 +91,14 @@ impl Contract {
             .filter_map(|voter| self.get_voter_information(&voter).map(|info| (voter, info)))
             .collect()
     }
+
+    pub fn get_total_eligible_users(&self) -> u32 {
+        self.total_eligible_users
+    }
+
+    pub fn get_total_voters(&self) -> u32 {
+        self.total_voters
+    }
 }
 
 #[cfg(test)]
@@ -134,6 +142,8 @@ mod tests {
         assert!(contract.get_voter_information(&acc(1)).is_none());
 
         contract.register_as_voter();
+
+        assert_eq!(contract.get_total_voters(), 1);
 
         let voter_info = contract.get_voter_information(&acc(1)).unwrap();
         assert_eq!(voter_info.vote_weight, 11);
