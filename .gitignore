@@ -19,6 +19,6 @@ data
 node_modules
 
 stake*
-snapshot*
+snapshot*.json*
 
 .env
