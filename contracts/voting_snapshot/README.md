@@ -24,6 +24,14 @@ To deploy manually, install [`cargo-near`](https://github.com/near/cargo-near) a
 cargo near deploy <account-id>
 ```
 
+## How to load snapshot?
+
+To load snapshot use js script prepared for it.
+
+```bash
+node ../../snapshotter/loadSnapshot.js --contract contractID --json ../../snapshot-108194270.json --network testnet --account adminId
+```
+
 ## Contract interface
 
 ```rust
@@ -60,6 +68,8 @@ pub fn is_nominee(self, nominee: &AccountId) -> bool
 pub fn is_eligible_voter(self, voter: &AccountId) -> bool
 pub fn get_voter_information(self, voter: &AccountId) -> VoterInformation
 pub fn get_voters_info(self, voters: Vec<AccountId>) -> Vec<(AccountId, VoterInformation)>
+pub fn get_total_eligible_users(&self) -> u32 
+pub fn get_total_voters(&self) -> u32 
 
 // Callbacks:
 pub fn on_refund_success(self, account_id: AccountId) -> ()
