@@ -70,6 +70,7 @@ pub fn get_voter_information(self, voter: &AccountId) -> VoterInformation
 pub fn get_voters_info(self, voters: Vec<AccountId>) -> Vec<(AccountId, VoterInformation)>
 pub fn get_total_eligible_users(&self) -> u32 
 pub fn get_total_voters(&self) -> u32 
+pub fn get_eligible_voter_info(&self, account_id: &AccountId) -> Option<UserData>
 
 // Callbacks:
 pub fn on_refund_success(self, account_id: AccountId) -> ()

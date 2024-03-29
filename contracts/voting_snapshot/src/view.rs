@@ -92,12 +92,19 @@ impl Contract {
             .collect()
     }
 
+    /// *View*: Returns amount of eligible users to become voters
     pub fn get_total_eligible_users(&self) -> u32 {
         self.total_eligible_users
     }
 
+    /// *View*: Shows total number of voters that are registered
     pub fn get_total_voters(&self) -> u32 {
         self.total_voters
+    }
+
+    /// *View*: displays information about snapshot data for particular account
+    pub fn get_eligible_voter_info(&self, account_id: &AccountId) -> Option<UserData> {
+        self.eligible_voters.get(account_id).cloned()
     }
 }
 
@@ -105,7 +112,7 @@ impl Contract {
 mod tests {
     use near_sdk::{testing_env, NearToken};
 
-    use crate::test_utils::*;
+    use crate::{test_utils::*, types::UserData};
 
     #[test]
     fn user_can_get_vote_config() {
@@ -124,6 +131,13 @@ mod tests {
         let (_context, contract) = setup_ctr();
 
         let vote_power = contract.get_vote_power(&acc(1)).unwrap();
+        assert_eq!(
+            Some(UserData {
+                stake: NearToken::from_near(1),
+                active_months: 1,
+            }),
+            contract.get_eligible_voter_info(&acc(1))
+        );
         assert_eq!(vote_power, 11);
     }
 
