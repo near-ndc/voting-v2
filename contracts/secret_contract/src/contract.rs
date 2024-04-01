@@ -14,6 +14,10 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    if !MY_KEYS.is_empty(deps.storage) {
+        return Err(ContractError::AlreadyInitialized);
+    }
+
     create_keys(deps, env, msg.end_time)?;
 
     Ok(Response::default())
@@ -57,7 +61,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 }
 
 fn query_keys(deps: Deps, env: Env) -> Result<KeysResponse, ContractError> {
-    let my_keys = MY_KEYS.load(deps.storage)?;
+    let my_keys = MY_KEYS
+        .load(deps.storage)
+        .map_err(|_| ContractError::NotInitialized)?;
     let private = (env.block.time > my_keys.end_time).then(|| my_keys.private_key);
 
     Ok(KeysResponse {

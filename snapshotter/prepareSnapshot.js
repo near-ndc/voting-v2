@@ -5,7 +5,7 @@ import { program } from 'commander';
 import assert from 'assert';
 
 program
-    .description('Load and process staking pools data from NEAR blockchain.')
+    .description('Combine staking pool and activity data to create snapshot.')
     .option('--block <type>', 'Block height of the snapshot', process.env.BLOCK)
     .option('--dbname <type>', 'Database name', process.env.DB_NAME)
     .option('--user <type>', 'Database user', process.env.DB_USER)
