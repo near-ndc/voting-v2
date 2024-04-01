@@ -1,0 +1,20 @@
+[package]
+name = "voting_contract"
+description = "The private voting contract for NDC"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = { workspace = true, features = ["legacy"] }
+common-contracts.workspace = true
+serde_bytes.workspace = true
+
+secp256k1.workspace = true
+aes-siv.workspace = true
+
+[dev-dependencies]
+near-sdk = { version = "5.0.0", features = ["unit-testing"] }
+near-workspaces = { version = "0.10.0", features = ["unstable"] }

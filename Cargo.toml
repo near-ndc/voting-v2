@@ -1,5 +1,10 @@
 [workspace]
-members = ["contracts/voting_snapshot", "contracts/secret_contract", "common"]
+members = [
+    "contracts/voting_snapshot",
+    "contracts/voting_contract",
+    "contracts/secret_contract",
+    "common",
+]
 resolver = "2"
 
 [profile.release]
@@ -33,6 +38,7 @@ cosmwasm-schema = "1.0.0"
 
 # General
 serde_json = "1"
+serde_bytes = "0.11"
 tokio = { version = "1.12.0", features = ["full"] }
 anyhow = "1.0"
 schemars = { version = "0.8.11" }
@@ -41,5 +47,6 @@ thiserror = { version = "1.0" }
 
 # crypto 
 secp256k1 = "0.28"
+aes-siv = "0.7.0"
 
 common-contracts = { path = "common" }
