@@ -15,10 +15,11 @@
     "dependencies": {
         "@supercharge/promise-pool": "^2.3.2",
         "big.js": "^6.1.1",
+        "bn-sqrt": "^1.0.0",
         "commander": "^12.0.0",
         "dotenv": "^16.3.1",
         "fs": "^0.0.1security",
-        "near-api-js": "3.0.4",
+        "near-api-js": "^3.0.4",
         "p-retry": "^6.2.0",
         "pg": "^8.11.3",
         "secp256k1": "^5.0.0",
