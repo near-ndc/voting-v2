@@ -2,11 +2,13 @@ use crate::*;
 
 #[near_bindgen]
 impl Contract {
-    pub fn get_votes(&self, page: u64, limit: u64) -> Vec<EncryptedVote> {
+    pub fn get_votes(&self, page: u64, limit: u64) -> Vec<EncryptedVoteView> {
         let start = page * limit;
         let end = std::cmp::min(start + limit, self.votes.len());
 
-        (start..end).map(|i| self.votes.get(i).unwrap()).collect()
+        (start..end)
+            .map(|i| self.votes.get(i).unwrap().into())
+            .collect()
     }
 
     pub fn get_total_votes(&self) -> u64 {
@@ -39,9 +41,9 @@ impl Contract {
 
 #[cfg(test)]
 mod view_tests {
-    use near_sdk::{testing_env, NearToken};
+    use near_sdk::{json_types::Base64VecU8, testing_env, NearToken};
 
-    use crate::{test_utils::*, types::EncryptedVote};
+    use crate::{test_utils::*, types::EncryptedVoteView};
 
     #[test]
     fn pagination_test_on_votes() {
@@ -52,9 +54,9 @@ mod view_tests {
         testing_env!(context.clone());
 
         let votes_init = (0..107)
-            .map(|i| EncryptedVote {
+            .map(|i| EncryptedVoteView {
                 vote: i.to_string(),
-                pubkey: [0; 64],
+                pubkey: Base64VecU8([i; 64].to_vec()),
             })
             .collect::<Vec<_>>();
 

@@ -38,7 +38,6 @@ cosmwasm-schema = "1.0.0"
 
 # General
 serde_json = "1"
-serde_bytes = "0.11"
 tokio = { version = "1.12.0", features = ["full"] }
 anyhow = "1.0"
 schemars = { version = "0.8.11" }

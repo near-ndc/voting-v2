@@ -1,6 +1,7 @@
 use near_sdk::borsh::{BorshDeserialize, BorshSerialize};
 use near_sdk::collections::{UnorderedMap, Vector};
-use near_sdk::{env, near_bindgen, require, AccountId, Timestamp};
+use near_sdk::env::panic_str;
+use near_sdk::{env, near_bindgen, require, AccountId, PanicOnDefault, Timestamp};
 
 pub mod consts;
 pub mod storage;
@@ -12,13 +13,13 @@ pub mod test_utils;
 
 use consts::*;
 use storage::StorageKey;
-use types::EncryptedVote;
+use types::{EncryptedVoteStorage, EncryptedVoteView};
 
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 #[borsh(crate = "near_sdk::borsh")]
 pub struct Contract {
-    votes: Vector<EncryptedVote>,
+    votes: Vector<EncryptedVoteStorage>,
 
     candidate_weights: UnorderedMap<AccountId, u64>,
 
@@ -39,15 +40,21 @@ impl Contract {
     }
 
     #[payable]
-    pub fn send_encrypted_votes(&mut self, votes: Vec<EncryptedVote>) {
+    pub fn send_encrypted_votes(&mut self, votes: Vec<EncryptedVoteView>) {
         let storage_start = env::storage_usage();
         require!(
             env::block_timestamp_ms() < self.end_time_in_ms,
             VOTING_PHASE_OVER
         );
         self.assert_relayer();
+        let votes: Option<Vec<_>> = votes.into_iter().map(Into::into).collect();
 
-        self.votes.extend(votes);
+        if let Some(votes) = votes {
+            self.votes.extend(votes);
+        } else {
+            panic_str(INVALID_VOTE_DATA);
+        }
+
         require!(
             common_contracts::finalize_storage_check(storage_start, 0),
             DEPOSIT_NOT_ENOUGH
@@ -83,9 +90,9 @@ impl Contract {
 
 #[cfg(test)]
 mod relayer_tests {
-    use near_sdk::{testing_env, NearToken};
+    use near_sdk::{json_types::Base64VecU8, testing_env, NearToken};
 
-    use crate::{test_utils::*, types::EncryptedVote};
+    use crate::{test_utils::*, types::EncryptedVoteView};
 
     #[test]
     fn can_init_contract() {
@@ -103,13 +110,13 @@ mod relayer_tests {
         testing_env!(context.clone());
 
         let votes: Vec<_> = vec![
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: [1; 64],
+                pubkey: Base64VecU8([1; 64].to_vec()),
             },
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: [2; 64],
+                pubkey: Base64VecU8([2; 64].to_vec()),
             },
         ];
 
@@ -142,13 +149,13 @@ mod relayer_tests {
         testing_env!(context.clone());
 
         let votes: Vec<_> = vec![
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: [1; 64],
+                pubkey: Base64VecU8([1; 64].to_vec()),
             },
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: [2; 64],
+                pubkey: Base64VecU8([2; 64].to_vec()),
             },
         ];
 
@@ -179,13 +186,13 @@ mod relayer_tests {
         testing_env!(context.clone());
 
         let votes: Vec<_> = vec![
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: [1; 64],
+                pubkey: Base64VecU8([1; 64].to_vec()),
             },
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: [2; 64],
+                pubkey: Base64VecU8([2; 64].to_vec()),
             },
         ];
 
@@ -214,13 +221,39 @@ mod relayer_tests {
         testing_env!(context.clone());
 
         let votes: Vec<_> = vec![
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: [1; 64],
+                pubkey: Base64VecU8([1; 64].to_vec()),
             },
-            EncryptedVote {
+            EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: [2; 64],
+                pubkey: Base64VecU8([2; 64].to_vec()),
+            },
+        ];
+
+        contract.send_encrypted_votes(votes.clone());
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid vote data")]
+    fn cant_add_invalid_votes() {
+        let (mut context, mut contract) = setup_ctr();
+        context.predecessor_account_id = relayer();
+        context.attached_deposit = NearToken::from_near(1);
+        testing_env!(context.clone());
+
+        let votes: Vec<_> = vec![
+            EncryptedVoteView {
+                vote: "vote1".to_string(),
+                pubkey: Base64VecU8([1; 64].to_vec()),
+            },
+            EncryptedVoteView {
+                vote: "vote2".to_string(),
+                pubkey: Base64VecU8([2; 66].to_vec()),
+            },
+            EncryptedVoteView {
+                vote: "vote3".to_string(),
+                pubkey: Base64VecU8([3; 64].to_vec()),
             },
         ];
 

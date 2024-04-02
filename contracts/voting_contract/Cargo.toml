@@ -10,7 +10,6 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { workspace = true, features = ["legacy"] }
 common-contracts.workspace = true
-serde_bytes.workspace = true
 
 [dev-dependencies]
 near-sdk = { workspace = true, features = ["unit-testing"] }
