@@ -4,18 +4,15 @@ This is a Node.js application that provides an API endpoint for retrieving pagin
 
 ## Installation
 
-1. Clone the repository:
-   ```
-   git clone <repository-url>
-   ```
-
-2. Install the dependencies:
-   ```
+1. Install the dependencies:
+   
+   ```bash
    npm i
    ```
 
-3. Start the application:
-   ```
+2. Start the application:
+
+   ```bash
    npm start:local
    ```
 
