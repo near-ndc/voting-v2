@@ -13,6 +13,6 @@ function loadSnapshot() {
 
 app.listen(port, () => {
     loadSnapshot();
-    console.log(`Dashboard server running on port :${port}`);
+    console.log(`Snapshot server running on port :${port}`);
     console.log(`------------------`);
 });
