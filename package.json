@@ -6,12 +6,13 @@
     "type": "module",
     "scripts": {
         "build": "cargo build --target wasm32-unknown-unknown --release",
-        "test": "cargo test --release -- --nocapture",
+        "test": "cargo test --release -- --nocapture && cd relayer && npm run test",
         "lint": "cargo fmt --all -- --check && cargo clippy --release -- -D warnings",
-        "cook": "npm run cookSnapshotContract && npm run cookSecret && npm run cookVoting",
+        "cook": "npm run cookSnapshotContract && npm run cookSecret && npm run cookVoting && npm run cookRelayer",
         "cookSnapshotContract": "cd contracts/voting_snapshot && cargo near build",
         "cookSecret": "cd contracts/secret_contract && make build-mainnet",
-        "cookVoting": "cd contracts/voting_contract && cargo near build"
+        "cookVoting": "cd contracts/voting_contract && cargo near build",
+        "cookRelayer": "cd relayer && npm i"
     },
     "dependencies": {
         "@supercharge/promise-pool": "^2.3.2",

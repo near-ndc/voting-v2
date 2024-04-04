@@ -30,12 +30,12 @@ pub struct Contract {
 #[near_bindgen]
 impl Contract {
     #[init]
-    pub fn new(relayer: AccountId, end_time_in_ms: Timestamp) -> Self {
+    pub fn new(relayer: AccountId, time: Timestamp) -> Self {
         Contract {
             votes: Vector::new(StorageKey::Votes),
             candidate_weights: UnorderedMap::new(StorageKey::CandidatesWeights),
             relayer,
-            end_time_in_ms,
+            end_time_in_ms: time + env::block_timestamp_ms(),
         }
     }
 
@@ -90,7 +90,7 @@ impl Contract {
 
 #[cfg(test)]
 mod relayer_tests {
-    use near_sdk::{json_types::Base64VecU8, testing_env, NearToken};
+    use near_sdk::{testing_env, NearToken};
 
     use crate::{test_utils::*, types::EncryptedVoteView};
 
@@ -112,11 +112,11 @@ mod relayer_tests {
         let votes: Vec<_> = vec![
             EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: Base64VecU8([1; 64].to_vec()),
+                pubkey: bs58::encode([1; 65].to_vec()).into_string(),
             },
             EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: Base64VecU8([2; 64].to_vec()),
+                pubkey: bs58::encode([2; 65].to_vec()).into_string(),
             },
         ];
 
@@ -151,11 +151,11 @@ mod relayer_tests {
         let votes: Vec<_> = vec![
             EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: Base64VecU8([1; 64].to_vec()),
+                pubkey: bs58::encode([1; 65].to_vec()).into_string(),
             },
             EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: Base64VecU8([2; 64].to_vec()),
+                pubkey: bs58::encode([2; 65].to_vec()).into_string(),
             },
         ];
 
@@ -188,11 +188,11 @@ mod relayer_tests {
         let votes: Vec<_> = vec![
             EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: Base64VecU8([1; 64].to_vec()),
+                pubkey: bs58::encode([1; 65].to_vec()).into_string(),
             },
             EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: Base64VecU8([2; 64].to_vec()),
+                pubkey: bs58::encode([2; 65].to_vec()).into_string(),
             },
         ];
 
@@ -223,11 +223,11 @@ mod relayer_tests {
         let votes: Vec<_> = vec![
             EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: Base64VecU8([1; 64].to_vec()),
+                pubkey: bs58::encode([1; 65].to_vec()).into_string(),
             },
             EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: Base64VecU8([2; 64].to_vec()),
+                pubkey: bs58::encode([2; 65].to_vec()).into_string(),
             },
         ];
 
@@ -245,15 +245,15 @@ mod relayer_tests {
         let votes: Vec<_> = vec![
             EncryptedVoteView {
                 vote: "vote1".to_string(),
-                pubkey: Base64VecU8([1; 64].to_vec()),
+                pubkey: bs58::encode([1; 65].to_vec()).into_string(),
             },
             EncryptedVoteView {
                 vote: "vote2".to_string(),
-                pubkey: Base64VecU8([2; 66].to_vec()),
+                pubkey: bs58::encode([2; 65].to_vec()).into_string(),
             },
             EncryptedVoteView {
                 vote: "vote3".to_string(),
-                pubkey: Base64VecU8([3; 64].to_vec()),
+                pubkey: bs58::encode([3; 64].to_vec()).into_string(),
             },
         ];
 

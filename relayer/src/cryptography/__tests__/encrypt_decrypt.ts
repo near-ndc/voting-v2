@@ -1,5 +1,5 @@
 import { publicKeyCreate, privateKeyVerify } from 'secp256k1';
-import { encrypt, decrypt } from '../index';
+import { encrypt, decrypt, createSignature } from '../index';
 import { VotingPackage } from '../types';
 import { randomBytes } from 'crypto';
 
@@ -24,7 +24,7 @@ describe('Encryption and Decryption', () => {
             secret = randomBytes(32)
         } while (!privateKeyVerify(secret))
 
-        return [secret, publicKeyCreate(secret, true)] as const;
+        return [secret, publicKeyCreate(secret, false)] as const;
     }
 
     beforeAll(() => {

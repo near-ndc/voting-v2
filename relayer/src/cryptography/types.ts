@@ -34,6 +34,7 @@ export const EncryptedVotingPackageWithProof = z.object({
     /// Proof that the data was signed by registered account
     /// Please note that this is required only for validation purposes but not forwarded to the chain
     signature: z.string(),
+    accountId: AccountId,
 });
 
 export type EncryptedVotingPackageWithProof = z.infer<typeof EncryptedVotingPackageWithProof>;
