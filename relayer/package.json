@@ -11,12 +11,15 @@
     },
     "author": "akorchyn",
     "dependencies": {
+        "@supercharge/promise-pool": "^3.2.0",
         "bn.js": "^5.2.1",
         "cors": "^2.8.5",
         "dotenv": "^16.4.5",
         "express": "^4.19.2",
         "miscreant": "^0.3.2",
-        "secp256k1": "^5.0.0"
+        "p-retry": "4.6.2",
+        "secp256k1": "^5.0.0",
+        "secretjs": "^1.12.5"
     },
     "devDependencies": {
         "@types/cors": "^2.8.17",
