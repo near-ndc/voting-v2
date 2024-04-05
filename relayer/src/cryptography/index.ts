@@ -1,4 +1,4 @@
-import { ecdh, ecdsaSign, ecdsaVerify, privateKeyVerify, publicKeyVerify } from 'secp256k1';
+import { ecdh, ecdsaSign, ecdsaVerify, privateKeyVerify, publicKeyCreate, publicKeyVerify } from 'secp256k1';
 import { SIV, PolyfillCryptoProvider } from 'miscreant';
 import { EncryptedVotingPackage, VotingPackage } from './types';
 import { KeyPair, PublicKey } from 'near-api-js/lib/utils';
@@ -6,7 +6,7 @@ import { base_decode, base_encode } from 'near-api-js/lib/utils/serialize';
 
 const provider = new PolyfillCryptoProvider();
 
-type Result<T> = {
+export type Result<T> = {
     error: string | undefined;
     data: T | undefined;
 }
@@ -14,7 +14,7 @@ type Result<T> = {
 const verifyKeys = (privateKey: Uint8Array, publicKey: Uint8Array): boolean => {
     try {
         return publicKeyVerify(publicKey) && privateKeyVerify(privateKey);
-    } catch (_) {
+    } catch (error) {
         return false;
     }
 }
@@ -110,9 +110,9 @@ export const encrypt = async (vote: VotingPackage, privateKey: Uint8Array, publi
             data: undefined
         };
     }
+    const publicKeyForExport = publicKeyCreate(privateKey, false);
 
     const sharedSecret = ecdh(publicKey, privateKey);
-
     const siv = await SIV.importKey(sharedSecret, "AES-SIV", provider);
     const encryptedData = await siv.seal(Buffer.from(JSON.stringify(vote)), []);
 
@@ -120,7 +120,7 @@ export const encrypt = async (vote: VotingPackage, privateKey: Uint8Array, publi
         error: undefined,
         data: {
             encryptedData: base_encode(encryptedData),
-            publicKey: base_encode(publicKey)
+            publicKey: base_encode(publicKeyForExport)
         }
     };
 }

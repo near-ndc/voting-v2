@@ -36,7 +36,6 @@ export const postVote = async (req: Request, res: Response) => {
         }
     }
 
-
     // Check if the user is a registered voter in the snapshot contract
     const voterInfo = await getVoterPublicKey(data.accountId);
     if (!voterInfo) {
