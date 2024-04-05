@@ -1,5 +1,10 @@
 [workspace]
-members = ["contracts/voting_snapshot", "contracts/secret_contract", "common"]
+members = [
+    "contracts/voting_snapshot",
+    "contracts/voting_contract",
+    "contracts/secret_contract",
+    "common",
+]
 resolver = "2"
 
 [profile.release]
@@ -41,5 +46,6 @@ thiserror = { version = "1.0" }
 
 # crypto 
 secp256k1 = "0.28"
+aes-siv = "0.7.0"
 
 common-contracts = { path = "common" }
