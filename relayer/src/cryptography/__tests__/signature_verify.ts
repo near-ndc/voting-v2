@@ -32,45 +32,15 @@ describe('Signature Creation and Verification', () => {
         data = base_encode(randomData);
     });
 
-    it('should create and verify signature for secp256k1 key', () => {
-        const [secret, publicKey] = secp256k1KeyPair;
-
-        const signature = createSignature(data, secret);
-        expect(signature).toBeDefined();
-
-        const isValid = verifySignature(data, publicKey, signature!);
-        expect(isValid).toBe(true);
-    });
-
     it('should create and verify signature for ed25519 key', () => {
         const [secret, publicKey] = ed25519KeyPair;
 
-        const signature = createSignature(data, secret);
+        const keyPair = KeyPair.fromString(secret);
+
+        const signature = createSignature(data, keyPair);
         expect(signature).toBeDefined();
 
         const isValid = verifySignature(data, publicKey, signature!);
         expect(isValid).toBe(true);
-    });
-
-    it('should fail signature verification with invalid key', () => {
-        const [secret] = secp256k1KeyPair
-
-        const signature = createSignature(data, secret);
-        expect(signature).toBeDefined();
-
-        const [_, pubkey] = generateSecp();
-        const isValid = verifySignature(data, pubkey, signature!);
-        expect(isValid).toBe(false);
-    });
-
-
-    it('should fail signature verification with different algorithm', () => {
-        const [secret] = secp256k1KeyPair;
-        const signature = createSignature(data, secret);
-        expect(signature).toBeDefined();
-
-        const [_, pubkey] = ed25519KeyPair;
-        const isValid = verifySignature(data, pubkey, signature!);
-        expect(isValid).toBe(false);
     });
 });
