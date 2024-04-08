@@ -62,7 +62,7 @@ export const postDecryption = async () => {
         });
     });
 
-    if (await sendResultsToContract(Array.from(results.entries()))) {
+    if (!await sendResultsToContract(Array.from(results.entries()))) {
         throw new Error("Error while submitting results to the contract");
     }
 }
