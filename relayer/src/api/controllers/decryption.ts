@@ -16,22 +16,22 @@ export const getPublicKey = async (_: Request, res: Response) => {
     return res.status(200).send(base_encode(secretKeys.data.public));
 }
 
-export const postDecryption = async (req: Request, res: Response) => {
+export const postDecryption = async () => {
     const secretKeys = await getSecretKeys();
 
     if (secretKeys.error || !secretKeys.data) {
         console.error("Error while getting secret keys", secretKeys.error);
-        return res.status(500).send({ message: "Error while getting secret keys" });
+        throw new Error("Error while getting secret keys");
     }
 
     if (secretKeys.data.private === undefined) {
         const endTime = new Date(secretKeys.data.end_time / 1_000_000).toUTCString()
-        return res.status(425).send({ message: `Secret key not available yet. Please come after ${endTime} UTC` });
+        throw new Error(`Secret key not available yet. Please come after ${endTime} UTC`);
     }
 
     const encryptedVotes = await getAllVotes();
     if (encryptedVotes.length === 0) {
-        return res.status(400).send({ message: "No votes to decrypt" });
+        throw new Error(`No votes to decrypt`);
     }
 
     const decryptedVotes = new Map<string, VotingPackage>();
@@ -63,9 +63,8 @@ export const postDecryption = async (req: Request, res: Response) => {
     });
 
     if (await sendResultsToContract(Array.from(results.entries()))) {
-        return res.status(200).send(decryptedVotes);
+        throw new Error("Error while submitting results to the contract");
     }
-    return res.status(500).send({ message: "Error while submitting results to the contract" });
 }
 
 const validateVote = async (vote: VotingPackage, voteNumber: number): Promise<boolean> => {

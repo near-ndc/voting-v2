@@ -4,9 +4,10 @@
     "description": "NEAR NDC Voting relayer",
     "main": "index.js",
     "scripts": {
-        "start:dev": "nodemon",
+        "start:dev": "nodemon server",
+        "start:decrypt": "ts-node ./src/index.ts decrypt",
         "build": "tsc",
-        "start:production": "pm2 start dist/index.js --name relayer --update-env",
+        "start:production": "pm2 start dist/index.js --name relayer --update-env -- server",
         "test": "jest"
     },
     "author": "akorchyn",
