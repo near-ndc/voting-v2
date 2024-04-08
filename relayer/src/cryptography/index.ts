@@ -39,29 +39,10 @@ export const verifySignature = (data: string, public_key: string, signature: str
     }
 }
 
-export const createSignature = (data: string, privateStr: string): string | undefined => {
+export const createSignature = (data: string, keyPair: KeyPair): string | undefined => {
     const message = base_decode(data);
-    const [type, private_key] = privateStr.split(':');
 
-    let signature: Uint8Array;
-    try {
-        if (type === "secp256k1") {
-            // secp256k1
-            const privKey = base_decode(private_key);
-            signature = ecdsaSign(message, privKey).signature;
-        } else if (type === "ed25519") {
-            // ed25519
-            const keyPair = KeyPair.fromString(privateStr);
-            signature = keyPair.sign(message).signature;
-        }
-        else {
-            return undefined;
-        }
-    } catch {
-        return undefined;
-    }
-
-    return base_encode(signature);
+    return base_encode(keyPair.sign(message).signature);
 }
 
 export const decrypt = async (vote: EncryptedVotingPackage, privateKey: Uint8Array): Promise<Result<VotingPackage>> => {

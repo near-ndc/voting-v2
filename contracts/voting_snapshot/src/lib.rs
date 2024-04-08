@@ -163,6 +163,7 @@ impl Contract {
     /// - User should be eligible
     /// - User should not be registered before
     /// - User should pay for storage
+    #[payable]
     pub fn register_as_nominee(&mut self) {
         let storage = env::storage_usage();
 
@@ -174,10 +175,7 @@ impl Contract {
 
         self.nominees.insert(user);
 
-        require!(
-            finalize_storage_check(storage, SNAPSHOT_RECORD_COST),
-            STORAGE_LIMIT_EXCEEDED
-        );
+        require!(finalize_storage_check(storage, 0), STORAGE_LIMIT_EXCEEDED);
     }
 
     /// *Transaction*: Any user can challenge the snapshot. User can deposit NEAR several times

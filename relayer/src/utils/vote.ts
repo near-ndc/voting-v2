@@ -1,6 +1,7 @@
 import { base_encode } from "near-api-js/lib/utils/serialize";
 import { createSignature, encrypt } from "../cryptography";
 import { AccountId, EncryptedVotingPackage, EncryptedVotingPackageWithProof, VotingPackage } from "../cryptography/types";
+import { KeyPair } from "near-api-js";
 
 export default class VotingPackageBuilder {
     private accountId: AccountId;
@@ -22,17 +23,16 @@ export default class VotingPackageBuilder {
     }
 
     /// Builds a voting package with the given encryption key and private key.
-    /// Private key should follow next standard: 'ed25519:bs58private_key' or 'secp256k1:bs58private_key'
-    signPackage(privateKey: string): VotingPackageEncryptor {
+    signPackage(keyPair: KeyPair): VotingPackageEncryptor {
         const votes = Array.from(this.votes.entries()).map(([candidate, weight]) => ({ candidate, weight }));
 
-        const signature = createSignature(base_encode(JSON.stringify({ accountId: this.accountId, votes })), privateKey);
+        const signature = createSignature(base_encode(JSON.stringify({ accountId: this.accountId, votes })), keyPair);
 
         if (!signature) {
             throw new Error("Failed to sign the voting package");
         }
 
-        return new VotingPackageEncryptor(privateKey, {
+        return new VotingPackageEncryptor(keyPair, {
             accountId: this.accountId,
             votes,
             signature,
@@ -40,13 +40,13 @@ export default class VotingPackageBuilder {
     }
 }
 
-class VotingPackageEncryptor {
-    private privateKey: string;
+export class VotingPackageEncryptor {
+    private keyPair: KeyPair;
     private vpackage: VotingPackage;
     private accountId: AccountId;
 
-    constructor(privateKey: string, vpackage: VotingPackage, accountId: AccountId) {
-        this.privateKey = privateKey;
+    constructor(keyPair: KeyPair, vpackage: VotingPackage, accountId: AccountId) {
+        this.keyPair = keyPair;
         this.vpackage = vpackage;
         this.accountId = accountId;
     }
@@ -59,25 +59,25 @@ class VotingPackageEncryptor {
             throw new Error(`Failed to encrypt the voting package: ${encryptedData.error}`);
         }
 
-        return new EncryptedVotingPackageSigner(this.privateKey, encryptedData.data, this.accountId);
+        return new EncryptedVotingPackageSigner(this.keyPair, encryptedData.data, this.accountId);
     }
 
 }
 
-class EncryptedVotingPackageSigner {
-    private privateKey: string;
+export class EncryptedVotingPackageSigner {
+    private keyPair: KeyPair;
     private vpackage: EncryptedVotingPackage;
     private accountId: AccountId;
 
-    constructor(privateKey: string, vpackage: EncryptedVotingPackage, accountId: AccountId) {
-        this.privateKey = privateKey;
+    constructor(keyPair: KeyPair, vpackage: EncryptedVotingPackage, accountId: AccountId) {
+        this.keyPair = keyPair;
         this.vpackage = vpackage;
         this.accountId = accountId;
     }
 
     /// Signs the encrypted voting package
     signPackage(): EncryptedVotingPackageWithProof {
-        const signature = createSignature(this.vpackage.encryptedData + this.vpackage.publicKey, this.privateKey);
+        const signature = createSignature(this.vpackage.encryptedData + this.vpackage.publicKey, this.keyPair);
 
         if (!signature) {
             throw new Error("Failed to sign the encrypted voting package");
