@@ -68,20 +68,27 @@ export const decrypt = async (vote: EncryptedVotingPackage, privateKey: Uint8Arr
             data: undefined,
         };
     }
+    try {
+        return VotingPackage.parseAsync(JSON.parse(Buffer.from(decryptedData).toString('utf-8')))
+            .then((data) => {
+                return {
+                    error: undefined,
+                    data,
+                };
+            })
+            .catch((_error) => {
+                return {
+                    error: 'Invalid data',
+                    data: undefined,
+                };
+            });
+    } catch (error) {
+        return {
+            error: 'Invalid data',
+            data: undefined,
+        };
 
-    return VotingPackage.parseAsync(JSON.parse(Buffer.from(decryptedData).toString('utf-8')))
-        .then((data) => {
-            return {
-                error: undefined,
-                data,
-            };
-        })
-        .catch((_error) => {
-            return {
-                error: 'Invalid data',
-                data: undefined,
-            };
-        });
+    }
 }
 
 export const encrypt = async (vote: VotingPackage, privateKey: Uint8Array, publicKey: Uint8Array): Promise<Result<EncryptedVotingPackage>> => {

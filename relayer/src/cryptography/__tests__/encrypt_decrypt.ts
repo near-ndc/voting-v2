@@ -1,7 +1,9 @@
-import { publicKeyCreate, privateKeyVerify, publicKeyVerify } from 'secp256k1';
+import { publicKeyCreate, privateKeyVerify, publicKeyVerify, ecdh } from 'secp256k1';
 import { encrypt, decrypt } from '../index';
 import { VotingPackage } from '../types';
 import { randomBytes } from 'crypto';
+import { PolyfillCryptoProvider, SIV } from 'miscreant';
+import { base_encode } from 'near-api-js/lib/utils/serialize';
 
 describe('Encryption and Decryption', () => {
     let privateKey: Uint8Array;
@@ -70,4 +72,23 @@ describe('Encryption and Decryption', () => {
         expect(encrypted.error).toBe('Invalid key');
         expect(encrypted.data).toBeUndefined();
     })
+
+    it('should fail if the decrypt data is invalid', async () => {
+        let data = "asasdasdas invalid data lol"
+
+        const publicKeyForExport = publicKeyCreate(userPrivateKey, false);
+        const provider = new PolyfillCryptoProvider();
+
+        const sharedSecret = ecdh(publicKey, userPrivateKey);
+        const siv = await SIV.importKey(sharedSecret, "AES-SIV", provider);
+        const encryptedData = await siv.seal(Buffer.from(data), []);
+
+        const encrypted = {
+            encryptedData: base_encode(encryptedData),
+            publicKey: base_encode(publicKeyForExport)
+        }
+
+        const decrypted = await decrypt(encrypted, privateKey);
+        expect(decrypted.error).toBe('Invalid data');
+    });
 });
