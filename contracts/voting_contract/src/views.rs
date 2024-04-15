@@ -26,7 +26,7 @@ impl Contract {
             .collect()
     }
 
-    pub fn get_total_candidate_weights(&self) -> u64 {
+    pub fn get_total_candidates(&self) -> u64 {
         self.candidate_weights.len()
     }
 
@@ -41,7 +41,7 @@ impl Contract {
 
 #[cfg(test)]
 mod view_tests {
-    use near_sdk::{json_types::Base64VecU8, testing_env, NearToken};
+    use near_sdk::{testing_env, NearToken};
 
     use crate::{test_utils::*, types::EncryptedVoteView};
 
@@ -56,7 +56,7 @@ mod view_tests {
         let votes_init = (0..107)
             .map(|i| EncryptedVoteView {
                 vote: i.to_string(),
-                pubkey: Base64VecU8([i; 64].to_vec()),
+                pubkey: bs58::encode([i; 65].to_vec()).into_string(),
             })
             .collect::<Vec<_>>();
 
@@ -89,7 +89,7 @@ mod view_tests {
 
         contract.sumbit_results(results_init.clone());
 
-        assert_eq!(contract.get_total_candidate_weights(), 107);
+        assert_eq!(contract.get_total_candidates(), 107);
 
         let results = contract.get_candidate_weights(0, 10);
         assert_eq!(results.len(), 10);

@@ -47,5 +47,6 @@ thiserror = { version = "1.0" }
 # crypto 
 secp256k1 = "0.28"
 aes-siv = "0.7.0"
+bs58 = "0.5"
 
 common-contracts = { path = "common" }

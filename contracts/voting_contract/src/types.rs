@@ -1,11 +1,10 @@
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
-    json_types::Base64VecU8,
     serde::{Deserialize, Serialize},
     NearSchema,
 };
 
-type PubKey = [u8; 64];
+type PubKey = [u8; 65];
 
 #[derive(BorshDeserialize, BorshSerialize, Debug, PartialEq, Clone)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -19,14 +18,14 @@ pub struct EncryptedVoteStorage {
 #[serde(crate = "near_sdk::serde")]
 pub struct EncryptedVoteView {
     pub vote: String,
-    pub pubkey: Base64VecU8,
+    pub pubkey: String,
 }
 
 impl From<EncryptedVoteStorage> for EncryptedVoteView {
     fn from(vote: EncryptedVoteStorage) -> Self {
         Self {
             vote: vote.vote,
-            pubkey: Base64VecU8(vote.pubkey.to_vec()),
+            pubkey: bs58::encode(vote.pubkey).into_string(),
         }
     }
 }
@@ -35,7 +34,7 @@ impl From<EncryptedVoteView> for Option<EncryptedVoteStorage> {
     fn from(vote: EncryptedVoteView) -> Self {
         Some(EncryptedVoteStorage {
             vote: vote.vote,
-            pubkey: vote.pubkey.0.as_slice().try_into().ok()?,
+            pubkey: bs58::decode(vote.pubkey).into_vec().ok()?.try_into().ok()?,
         })
     }
 }
